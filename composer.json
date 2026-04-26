@@ -1,5 +1,6 @@
 {
     "name": "sqrd/page-cache",
+    "version": "0.0.0-dev",
     "description": "Accept-aware nginx-served WordPress page cache.",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
@@ -17,6 +18,9 @@
     },
     "config": {
         "optimize-autoloader": true,
+        "platform": {
+            "php": "8.3.99"
+        },
         "preferred-install": "dist",
         "sort-packages": true,
         "allow-plugins": {

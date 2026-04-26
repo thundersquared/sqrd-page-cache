@@ -36,11 +36,11 @@ jobs:
           dev: yes
 
       - name: Run Pest test suite
-        uses: php-actions/phpunit@v4
+        uses: php-actions/composer@v6.1.2
         with:
           php_version: "8.3"
-          vendored_phpunit_path: vendor/bin/pest
-          args: --no-coverage
+          command: run-script
+          args: test
 
       - name: Reinstall dependencies (no dev, for release)
         uses: php-actions/composer@v6.1.2
