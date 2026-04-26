@@ -11,9 +11,20 @@
             "sqrd\\Cache\\": "src/"
         }
     },
+    "scripts": {
+        "test": "pest --no-coverage",
+        "test:coverage": "pest --coverage"
+    },
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
-        "sort-packages": true
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "require-dev": {
+        "brain/monkey": "*",
+        "pestphp/pest": "*"
     }
 }

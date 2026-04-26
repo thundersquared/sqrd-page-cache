@@ -1,0 +1,43 @@
+# ── OS / editor ──────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+nbproject/
+.project
+.buildpath
+.settings/
+
+# ── PHP / Composer ────────────────────────────────────────────────────────────
+/vendor/
+
+# ── Test artifacts ────────────────────────────────────────────────────────────
+.phpunit.cache/
+.phpunit.result.cache
+coverage/
+.pest/
+*.coverage
+
+# ── Secrets / env ─────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.tfvars
+
+# ── Runtime cache (the actual cached pages) ───────────────────────────────────
+# The plugin writes here; these are site-specific and must not be committed.
+wp-content/cache/sqrd-page-cache/
+
+# ── Build / release ───────────────────────────────────────────────────────────
+*.zip
+dist/
+build/
