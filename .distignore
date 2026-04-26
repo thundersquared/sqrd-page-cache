@@ -1,0 +1,6 @@
+# Files excluded from the distributable zip built by .github/workflows/release.yml
+.git
+.github
+tests
+.gitignore
+.distignore

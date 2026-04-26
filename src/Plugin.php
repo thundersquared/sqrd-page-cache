@@ -41,6 +41,10 @@ class Plugin
         if (is_admin() || wp_doing_ajax()) {
             Admin::register_hooks();
         }
+
+        // Auto-updater: hook into WP's native plugin update system via GitHub Releases.
+        Updater::register($plugin_file, (string) (defined('SQRD_CACHE_VERSION') ? SQRD_CACHE_VERSION : '0.0.0'));
+        add_action('admin_init', [Updater::class, 'handle_manual_check']);
     }
 
     public static function on_activate(): void
