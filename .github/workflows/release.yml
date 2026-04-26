@@ -23,14 +23,11 @@ jobs:
           echo "version=$VERSION"                              >> $GITHUB_OUTPUT
           echo "zip_name=sqrd-page-cache-${VERSION}.zip"      >> $GITHUB_OUTPUT
 
-      - name: Verify plugin header version matches tag
+      - name: Stamp version into plugin file
         run: |
-          HEADER_VERSION=$(grep "^ \* Version:" sqrd-page-cache.php | awk '{print $3}')
-          TAG_VERSION="${{ steps.tag.outputs.version }}"
-          if [ "$HEADER_VERSION" != "$TAG_VERSION" ]; then
-            echo "::error::Plugin header version ($HEADER_VERSION) does not match tag ($TAG_VERSION)"
-            exit 1
-          fi
+          VERSION="${{ steps.tag.outputs.version }}"
+          sed -i "s/^ \* Version:.*/ * Version:           ${VERSION}/" sqrd-page-cache.php
+          sed -i "s/define('SQRD_CACHE_VERSION', '[^']*')/define('SQRD_CACHE_VERSION', '${VERSION}')/" sqrd-page-cache.php
 
       - name: Install dependencies (with dev, for tests)
         uses: php-actions/composer@v6.1.2

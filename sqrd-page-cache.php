@@ -4,7 +4,7 @@
  * Plugin Name:       SQRD Page Cache
  * Plugin URI:        https://github.com/thundersquared/sqrd-page-cache
  * Description:       Accept-aware disk page cache served directly by nginx. Caches text/html and text/markdown variants independently and stores a headers sidecar for forward-compatibility.
- * Version:           1.0.0
+ * Version:           0.0.0-dev
  * Requires at least: 6.4
  * Requires PHP:      8.3
  * Author:            SQRD
@@ -33,6 +33,6 @@ if (!is_file($sqrd_autoload)) {
 }
 require $sqrd_autoload;
 
-define('SQRD_CACHE_VERSION', '1.0.0');
+define('SQRD_CACHE_VERSION', '0.0.0-dev');
 
 sqrd\Cache\Plugin::instance()->init(__FILE__);
