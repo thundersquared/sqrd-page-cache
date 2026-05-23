@@ -4,7 +4,7 @@ Tags:              cache, page cache, nginx, markdown, performance
 Requires at least: 6.4
 Tested up to:      6.8
 Requires PHP:      8.3
-Stable tag:        0.1.1
+Stable tag:        0.1.2
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -155,6 +155,10 @@ guard skips the write to avoid poisoning nginx's lookup.
 
 == Changelog ==
 
+= 0.1.2 =
+* Analytics tracking parameters (Google Analytics `_ga` / `_ga_*` / `_gl`, UTM `utm_*`, Facebook `fbclid`, Google Ads `gclid`, Microsoft `msclkid`, Mailchimp `mc_cid` / `mc_eid`, Yandex `yclid`, DoubleClick `dclid`) no longer bust the cache — URLs that carry only trackers resolve to the same cache file as their bare-path counterpart. Extend the list with the new `sqrd_cache_tracking_params` filter.
+* nginx include emits `X-Cached-By: sqrd-page-cache` on the cache location block as a diagnostic marker for disk-cache HITs.
+
 = 0.1.1 =
 * New filter `sqrd_page_cache/respect_donotcachepage` (default `false`): sqrd ignores the generic `DONOTCACHEPAGE` constant by default — its parity guard already prevents cross-variant poisoning, so the bypass is overly conservative. Filter to `true` to restore the legacy behavior.
 * Plugin now drives `post_content_to_markdown/cache_md_urls` from the same filter, so the Roots markdown plugin stops defining `DONOTCACHEPAGE` on `.md` URLs out of the box and Accept-keyed markdown is cached without extra setup.
@@ -169,6 +173,9 @@ guard skips the write to avoid poisoning nginx's lookup.
 * Initial release.
 
 == Upgrade Notice ==
+
+= 0.1.2 =
+Tracker query strings now hit cache instead of bypassing. To pick up the X-Cached-By header (and the relaxed bypass on the nginx HIT path), reload nginx after upgrading: `nginx -t && systemctl reload nginx`.
 
 = 0.1.1 =
 Now ignores `DONOTCACHEPAGE` by default and bridges to roots/post-content-to-markdown so Accept-keyed and `.md`-URL markdown both cache out of the box. To restore the previous strict behavior, add `add_filter('sqrd_page_cache/respect_donotcachepage', '__return_true');` in a mu-plugin.
