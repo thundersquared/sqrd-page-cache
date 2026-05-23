@@ -149,7 +149,11 @@ class Store
 
     private static function atomic_write(string $path, string $data): void
     {
-        $tmp = $path . '.tmp.' . getmypid();
+        // Cryptographically random suffix — getmypid() alone collided when a
+        // single PHP-FPM worker handled overlapping writes (sub-requests,
+        // fastcgi_finish_request continuations) and could publish a partial
+        // body via rename.
+        $tmp = $path . '.tmp.' . bin2hex(random_bytes(8));
         $written = file_put_contents($tmp, $data, LOCK_EX);
         if ($written === false) {
             @unlink($tmp);
@@ -161,19 +165,41 @@ class Store
         }
     }
 
+    /**
+     * Recursively delete a directory tree WITHOUT descending through symlinks.
+     *
+     * `RecursiveDirectoryIterator` follows symlinked directories by default,
+     * which would let any symlink planted in the cache root expand the blast
+     * radius of `flush_all` to arbitrary filesystem locations writable by the
+     * PHP user.
+     */
     private static function rmdir_recursive(string $dir): void
     {
-        $iter = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST
-        );
-        foreach ($iter as $item) {
-            if ($item->isDir()) {
-                @rmdir($item->getPathname());
+        $dh = @opendir($dir);
+        if ($dh === false) {
+            return;
+        }
+
+        while (($entry = readdir($dh)) !== false) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+            $path = $dir . DIRECTORY_SEPARATOR . $entry;
+
+            // Treat symlinks as files — unlink the link itself, never traverse it.
+            if (is_link($path)) {
+                @unlink($path);
+                continue;
+            }
+
+            if (is_dir($path)) {
+                self::rmdir_recursive($path);
             } else {
-                @unlink($item->getPathname());
+                @unlink($path);
             }
         }
+        closedir($dh);
+
         @rmdir($dir);
     }
 }

@@ -160,8 +160,22 @@ class Output
         }
 
         // All checks passed — write to cache.
-        $host = $_SERVER['HTTP_HOST'] ?? (string) parse_url((string) home_url(), PHP_URL_HOST);
-        $path = Paths::file_for($host, $request_uri, $response_ext);
+        // Fall back to the site's canonical host if HTTP_HOST is missing or
+        // rejected by Paths::normalize_host (e.g. "Host: ..").
+        $candidate_host = $_SERVER['HTTP_HOST'] ?? '';
+        $fallback_host  = (string) parse_url((string) home_url(), PHP_URL_HOST);
+
+        try {
+            $path = Paths::file_for($candidate_host, $request_uri, $response_ext);
+        } catch (\InvalidArgumentException $e) {
+            try {
+                $path = Paths::file_for($fallback_host, $request_uri, $response_ext);
+            } catch (\InvalidArgumentException) {
+                // URI itself is unsafe (traversal) — skip cache write entirely.
+                error_log('sqrd-page-cache: refusing to cache unsafe request — ' . $e->getMessage());
+                return $buffer;
+            }
+        }
 
         // Minify HTML variants before persisting. Markdown is left untouched —
         // minifying markdown would corrupt list/paragraph structure. Disk and
@@ -241,8 +255,17 @@ class Output
     private static function matches_any(string $key, array $patterns): bool
     {
         foreach ($patterns as $pattern) {
+            if ($pattern === '') {
+                continue;
+            }
             if (str_ends_with($pattern, '*')) {
-                if (str_starts_with($key, substr($pattern, 0, -1))) {
+                $stem = substr($pattern, 0, -1);
+                // A bare '*' (empty stem) would match every key and silently
+                // collapse all query strings onto one cache file — refuse it.
+                if ($stem === '') {
+                    continue;
+                }
+                if (str_starts_with($key, $stem)) {
                     return true;
                 }
             } elseif ($pattern === $key) {
@@ -254,13 +277,29 @@ class Output
 
     private static function has_bypass_cookie(): bool
     {
+        $defaults = [
+            'wordpress_logged_in_',
+            'comment_author_',
+            'wp-postpass_',
+            // Stock e-commerce session markers — anonymous shoppers carry
+            // cart state in these without ever setting a wp logged-in cookie,
+            // so without these prefixes their cart-aware HTML would land in
+            // the shared cache.
+            'woocommerce_items_in_cart',
+            'woocommerce_cart_hash',
+            'wp_woocommerce_session_',
+            'edd_items_in_cart',
+            'edd_cart_messages',
+        ];
+
+        /** @var list<string> $prefixes */
+        $prefixes = (array) apply_filters('sqrd_page_cache/bypass_cookie_prefixes', $defaults);
+
         foreach (array_keys($_COOKIE) as $name) {
-            if (
-                str_starts_with($name, 'wordpress_logged_in_') ||
-                str_starts_with($name, 'comment_author_')       ||
-                str_starts_with($name, 'wp-postpass_')
-            ) {
-                return true;
+            foreach ($prefixes as $prefix) {
+                if ($prefix !== '' && str_starts_with((string) $name, (string) $prefix)) {
+                    return true;
+                }
             }
         }
         return false;

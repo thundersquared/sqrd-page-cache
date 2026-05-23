@@ -94,4 +94,28 @@ describe('Output::tracking_params', function (): void {
         // And is_tracking_only sees the additions.
         expect(Output::is_tracking_only(['_clck' => 'x', 'ttclid' => 'y']))->toBeTrue();
     });
+
+    it('refuses bare-* wildcard pattern that would match every key', function (): void {
+        // A filter that returns ['*'] used to collapse every query string onto
+        // the same cache file via str_starts_with($key, '') === true.
+        Brain\Monkey\Functions\when('apply_filters')->alias(
+            fn(string $tag, mixed $value): mixed =>
+                $tag === 'sqrd_page_cache/tracking_params' ? ['*'] : $value
+        );
+
+        expect(Output::is_tracking_only(['inject' => '<script>']))->toBeFalse();
+        expect(Output::is_tracking_only(['anything' => '1']))->toBeFalse();
+    });
+
+    it('ignores empty patterns in the filter result', function (): void {
+        Brain\Monkey\Functions\when('apply_filters')->alias(
+            fn(string $tag, mixed $value): mixed =>
+                $tag === 'sqrd_page_cache/tracking_params' ? ['', '_ga'] : $value
+        );
+
+        // Empty pattern would have matched everything (=== '' check) — guard
+        // rejects it. _ga still works.
+        expect(Output::is_tracking_only(['anything' => '1']))->toBeFalse();
+        expect(Output::is_tracking_only(['_ga' => 'x']))->toBeTrue();
+    });
 });

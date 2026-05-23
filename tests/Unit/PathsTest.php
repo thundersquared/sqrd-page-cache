@@ -34,12 +34,21 @@ describe('Paths::normalize_uri', function (): void {
         expect(Paths::normalize_uri('/blog/post?utm_source=x&utm_medium=email'))->toBe('/blog/post/');
     });
 
-    it('rejects path traversal — returns / on ..', function (): void {
-        expect(Paths::normalize_uri('/foo/../etc/passwd'))->toBe('/');
+    it('throws on raw .. traversal — caller must bail', function (): void {
+        expect(fn() => Paths::normalize_uri('/foo/../etc/passwd'))
+            ->toThrow(\InvalidArgumentException::class);
     });
 
-    it('rejects traversal in the middle', function (): void {
-        expect(Paths::normalize_uri('/safe/../unsafe'))->toBe('/');
+    it('throws on traversal in the middle', function (): void {
+        expect(fn() => Paths::normalize_uri('/safe/../unsafe'))
+            ->toThrow(\InvalidArgumentException::class);
+    });
+
+    it('throws on percent-encoded traversal (%2e%2e)', function (): void {
+        expect(fn() => Paths::normalize_uri('/foo/%2e%2e/bar'))
+            ->toThrow(\InvalidArgumentException::class);
+        expect(fn() => Paths::normalize_uri('/foo/%2E%2E/bar'))
+            ->toThrow(\InvalidArgumentException::class);
     });
 
     it('normalises multiple consecutive slashes', function (): void {
@@ -91,5 +100,40 @@ describe('Paths::file_for', function (): void {
     it('handles port in host', function (): void {
         $path = Paths::file_for('localhost:8080', '/', 'html');
         expect($path)->toContain('localhost:8080');
+    });
+
+    it('rejects a Host header that reduces to ".."', function (): void {
+        // Sanitiser previously preserved bare dots, so `Host: ..` produced
+        // cache_root/../index.html and escaped the cache root.
+        expect(fn() => Paths::file_for('..', '/', 'html'))
+            ->toThrow(\InvalidArgumentException::class);
+    });
+
+    it('rejects a Host header that reduces to "."', function (): void {
+        expect(fn() => Paths::file_for('.', '/', 'html'))
+            ->toThrow(\InvalidArgumentException::class);
+    });
+
+    it('rejects a Host header beginning with a dot', function (): void {
+        expect(fn() => Paths::file_for('.example.com', '/', 'html'))
+            ->toThrow(\InvalidArgumentException::class);
+    });
+
+    it('rejects an empty Host header', function (): void {
+        expect(fn() => Paths::file_for('', '/', 'html'))
+            ->toThrow(\InvalidArgumentException::class);
+    });
+
+    it('rejects a Host header that contains a traversal sequence', function (): void {
+        // "a..b" survives the character class strip — make sure the post-strip
+        // double-dot check still rejects it.
+        expect(fn() => Paths::file_for('a..b', '/', 'html'))
+            ->toThrow(\InvalidArgumentException::class);
+    });
+
+    it('rejects a Host header whose unsafe characters strip down to ".."', function (): void {
+        // `..!@#` reduces to `..` after the character-class filter.
+        expect(fn() => Paths::file_for('..!@#', '/', 'html'))
+            ->toThrow(\InvalidArgumentException::class);
     });
 });

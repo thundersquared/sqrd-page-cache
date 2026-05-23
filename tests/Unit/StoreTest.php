@@ -249,6 +249,30 @@ describe('Store::flush_all', function (): void {
         Store::flush_all();
         expect(is_dir($this->tmp))->toBeTrue();
     });
+
+    it('does not delete files reached through a symlink planted in the cache root', function (): void {
+        // A symlinked directory inside the cache root must NOT be followed when
+        // flushing. Previously RecursiveDirectoryIterator descended through it
+        // and unlinked the symlink target's files (subject to perms), turning
+        // "Purge all" into an arbitrary-file-delete primitive for anyone who
+        // could plant a symlink in cache_root.
+        $outside = sys_get_temp_dir() . '/sqrd-symlink-target-' . bin2hex(random_bytes(4));
+        mkdir($outside);
+        $sentinel = $outside . '/keep-me.txt';
+        file_put_contents($sentinel, 'untouched');
+
+        // $this->tmp already exists thanks to the describe-level beforeEach.
+        symlink($outside, $this->tmp . '/should-not-follow');
+
+        Store::flush_all();
+
+        // Cache root recreated empty; symlink target survives.
+        expect(file_exists($sentinel))->toBeTrue();
+        expect(file_get_contents($sentinel))->toBe('untouched');
+
+        unlink($sentinel);
+        rmdir($outside);
+    });
 });
 
 // ── stats ─────────────────────────────────────────────────────────────────────

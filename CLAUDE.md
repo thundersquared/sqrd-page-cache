@@ -48,3 +48,11 @@ nginx/
 **Minifier filter duck-typing** — `sqrd_page_cache/minify_html_options` filter accepts any object with a `minify(string): string` method, not just `HtmlMin` instances. Filter name uses slash convention; the old `sqrd_cache_minify_html_options` name is dead.
 
 **Cache key = path only** — `Paths::file_for()` strips query strings. All tracking-param variants of a URL (`?utm_source=x&fbclid=y`) share one cache file — no extra key logic needed or wanted.
+
+**Path validation is load-bearing security, not ergonomics** — `Paths::normalize_uri()` THROWS `\InvalidArgumentException` on raw `..` and percent-encoded `%2e%2e`; `Paths::normalize_host()` THROWS on empty/dot-only/leading-dot/double-dot hosts; `Paths::file_for()` then runs a `realpath()` bound check against the cache root. Do NOT change any of these to "return a fallback" — the original 0.1.5 fallback (`/` for traversal, dots preserved in host) was an arbitrary-write primitive. New callers MUST wrap `file_for()` in try/catch and skip the operation on failure (see `Output::finish()` for the pattern).
+
+**`matches_any()` rejects empty patterns and bare `*`** — a `sqrd_page_cache/tracking_params` filter returning `['*']` would otherwise match every key via `str_starts_with($key, '')` and collapse all query strings onto one cache file. If you ever add a new pattern syntax (e.g. regex), apply the same "non-empty stem" guard.
+
+**`Store::rmdir_recursive()` must not follow symlinks** — built on `opendir`/`readdir` with explicit `is_link()` checks for that reason. `RecursiveDirectoryIterator` descends through symlinked dirs by default; using it here would turn `flush_all` into an arbitrary-file-delete primitive.
+
+**`Store::atomic_write()` temp suffix uses `random_bytes()`** — not `getmypid()`. A single PHP-FPM worker can handle overlapping writes (sub-requests, `fastcgi_finish_request` continuations); PID collisions would publish a partially written body via rename.
