@@ -104,7 +104,7 @@ describe('Minifier::html', function (): void {
         // returns a stub which throws on minify().
         Monkey\Functions\when('apply_filters')->alias(
             function (string $tag, mixed $value) {
-                if ($tag === 'sqrd_cache_minify_html_options') {
+                if ($tag === 'sqrd_page_cache/minify_html_options') {
                     return new class {
                         public function minify(string $html): string
                         {

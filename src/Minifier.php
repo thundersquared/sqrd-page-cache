@@ -60,7 +60,7 @@ class Minifier
             ->doRemoveOmittedHtmlTags(false)
             ->doRemoveOmittedQuotes(false);
 
-        $filtered = apply_filters('sqrd_cache_minify_html_options', $minifier);
+        $filtered = apply_filters('sqrd_page_cache/minify_html_options', $minifier);
         return is_object($filtered) && method_exists($filtered, 'minify')
             ? $filtered
             : $minifier;

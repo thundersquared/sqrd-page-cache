@@ -157,11 +157,12 @@ guard skips the write to avoid poisoning nginx's lookup.
 
 = 0.1.4 =
 * Minifier no longer applies WHATWG's optional end-tag omission rules — closing `</html>`, `</body>`, `</p>`, `</li>`, `</td>`, etc. are preserved. Browser parsing was always fine without them, but the missing tags surprised devtools/snapshot/regex tooling. Attribute quotes are likewise preserved.
+* Filter rename: `sqrd_cache_minify_html_options` → `sqrd_page_cache/minify_html_options` (slash-namespaced to match the rest of the modern filter surface like `sqrd_page_cache/respect_donotcachepage`). Anyone hooking the 0.1.3-era name must rename their callback.
 
 = 0.1.3 =
 * HTML minification on cache write via the [akankov/html-min](https://packagist.org/packages/akankov/html-min) library. Strips redundant whitespace, line breaks, and non-conditional HTML comments before the file is persisted and before the response goes back to the client — typical WP pages shrink 15-25% before gzip/brotli compression. On by default; toggle under **Settings → SQRD Page Cache**.
 * Markdown variants are never minified (would corrupt list/paragraph structure). Inline `<script>` / `<style>` / `<pre>` / `<textarea>` and IE conditional comments are protected automatically by the library. Per-region opt-out: wrap any block in `<nocompress>…</nocompress>`.
-* New filter `sqrd_cache_minify_html_options` receives the configured `HtmlMin` instance so sites can flip individual `do*` toggles (or swap in an alternative minifier entirely) without forking.
+* New filter `sqrd_page_cache/minify_html_options` receives the configured `HtmlMin` instance so sites can flip individual `do*` toggles (or swap in an alternative minifier entirely) without forking.
 
 = 0.1.2 =
 * Analytics tracking parameters (Google Analytics `_ga` / `_ga_*` / `_gl`, UTM `utm_*`, Facebook `fbclid`, Google Ads `gclid`, Microsoft `msclkid`, Mailchimp `mc_cid` / `mc_eid`, Yandex `yclid`, DoubleClick `dclid`) no longer bust the cache — URLs that carry only trackers resolve to the same cache file as their bare-path counterpart. Extend the list with the new `sqrd_cache_tracking_params` filter.
