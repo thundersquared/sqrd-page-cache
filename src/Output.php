@@ -52,7 +52,9 @@ class Output
         }
 
         // Skip if another plugin disabled caching via the DONOTCACHEPAGE constant.
-        if (defined('DONOTCACHEPAGE')) {
+        // Opt-out via filter for setups whose cache is variant-isolated (e.g. Accept-keyed)
+        // and can safely ignore generic "uncacheable" signals from other plugins.
+        if (defined('DONOTCACHEPAGE') && apply_filters('sqrd_page_cache/respect_donotcachepage', true)) {
             return;
         }
 
@@ -76,7 +78,7 @@ class Output
         }
 
         // Skip if DONOTCACHEPAGE was defined after start() ran.
-        if (defined('DONOTCACHEPAGE')) {
+        if (defined('DONOTCACHEPAGE') && apply_filters('sqrd_page_cache/respect_donotcachepage', true)) {
             return $buffer;
         }
 

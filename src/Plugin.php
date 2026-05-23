@@ -34,6 +34,14 @@ class Plugin
         // Start capturing output as early as possible.
         add_action('init', [Output::class, 'start'], 0);
 
+        // Bridge to roots/post-content-to-markdown: tell it that .md URLs ARE cacheable
+        // when our DONOTCACHEPAGE bypass is filtered off — otherwise the markdown plugin
+        // unconditionally defines DONOTCACHEPAGE on plugins_loaded and our Output bails.
+        // Preserves any upstream `true` so a third party can't be overridden to `false`.
+        add_filter('post_content_to_markdown/cache_md_urls', static function (bool $cacheable): bool {
+            return $cacheable || !(bool) apply_filters('sqrd_page_cache/respect_donotcachepage', true);
+        });
+
         // Cache invalidation hooks.
         Invalidator::register_hooks();
 

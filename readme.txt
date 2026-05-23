@@ -4,7 +4,7 @@ Tags:              cache, page cache, nginx, markdown, performance
 Requires at least: 6.4
 Tested up to:      6.8
 Requires PHP:      8.3
-Stable tag:        0.1.0
+Stable tag:        0.1.1
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -155,6 +155,10 @@ guard skips the write to avoid poisoning nginx's lookup.
 
 == Changelog ==
 
+= 0.1.1 =
+* New filter `sqrd_page_cache/respect_donotcachepage` (default `true`) lets variant-isolated setups opt out of bailing on the generic `DONOTCACHEPAGE` constant.
+* When the filter is set to `false`, also signals `post_content_to_markdown/cache_md_urls` so the Roots markdown plugin stops defining `DONOTCACHEPAGE` on `.md` URLs and Accept-keyed markdown gets cached.
+
 = 0.1.0 =
 * Varnish purge integration: per-URL `PURGE` and full-flush `BAN /` to every configured Varnish host, scoped by `X-Cache-Tag-Prefix` for multi-tenant setups.
 * New invalidation hooks: plugin activate/deactivate, `upgrader_process_complete` (any plugin/theme/core upgrade), plus Varnish flush on plugin activate/deactivate.
@@ -165,6 +169,9 @@ guard skips the write to avoid poisoning nginx's lookup.
 * Initial release.
 
 == Upgrade Notice ==
+
+= 0.1.1 =
+Adds opt-out filter for `DONOTCACHEPAGE`. To cache markdown variants when using roots/post-content-to-markdown, drop in a mu-plugin: `add_filter('sqrd_page_cache/respect_donotcachepage', '__return_false');`.
 
 = 0.1.0 =
 Adds upstream Varnish purge and Brotli pre-compression. Configure Varnish hosts under Settings → SQRD Page Cache before enabling. Requires ngx_brotli compiled into nginx to serve `.br` siblings.
