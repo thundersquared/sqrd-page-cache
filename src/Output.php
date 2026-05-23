@@ -9,6 +9,29 @@ class Output
     private static bool $buffering = false;
     private static bool $enabled   = true;
 
+    /**
+     * Query-string parameters that should NOT bust the cache. Default list covers
+     * the common analytics/ad-click trackers. Glob suffix `*` matches any prefix:
+     *   _ga_*  matches _ga_XM7C2CX85R, _ga_ANYTHING
+     *   utm_*  matches utm_source, utm_medium, ...
+     *
+     * Extend at runtime:
+     *   add_filter('sqrd_cache_tracking_params', fn(array $p): array =>
+     *       [...$p, '_clck', 'ttclid', 'twclid']
+     *   );
+     *
+     * Note: the nginx include carries its own hardcoded copy of these patterns
+     * (nginx can't read WP options). Edit nginx/sqrd-page-cache.conf if you add
+     * patterns and want the bypass relaxation to apply on cache HIT lookups too.
+     */
+    private const TRACKING_PATTERNS = [
+        '_ga', '_ga_*', '_gl',
+        'utm_*',
+        'fbclid', 'gclid', 'msclkid',
+        'mc_cid', 'mc_eid',
+        'yclid', 'dclid',
+    ];
+
     private function __construct() {}
 
     /**
@@ -41,8 +64,10 @@ class Output
             return;
         }
 
-        // Skip if query string present (bypass matches nginx).
-        if (!empty($_GET)) {
+        // Skip if query string contains anything beyond tracking params.
+        // Bypass logic mirrors the nginx include — keep both in sync if you extend
+        // the tracking pattern list via the sqrd_cache_tracking_params filter.
+        if (!self::is_tracking_only($_GET)) {
             return;
         }
 
@@ -163,7 +188,57 @@ class Output
         self::$enabled = false;
     }
 
+    /**
+     * Return the active list of tracking parameter patterns (defaults + filter).
+     *
+     * @return list<string>
+     */
+    public static function tracking_params(): array
+    {
+        /** @var list<string> $patterns */
+        $patterns = (array) apply_filters('sqrd_cache_tracking_params', self::TRACKING_PATTERNS);
+        return $patterns;
+    }
+
+    /**
+     * True when every key in $args matches a tracking pattern (or $args is empty).
+     * False when at least one key looks like a real query parameter.
+     *
+     * @param array<string,mixed> $args
+     */
+    public static function is_tracking_only(array $args): bool
+    {
+        if ($args === []) {
+            return true;
+        }
+
+        $patterns = self::tracking_params();
+        foreach (array_keys($args) as $key) {
+            if (!self::matches_any((string) $key, $patterns)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     // -------------------------------------------------------------------------
+
+    /**
+     * @param list<string> $patterns
+     */
+    private static function matches_any(string $key, array $patterns): bool
+    {
+        foreach ($patterns as $pattern) {
+            if (str_ends_with($pattern, '*')) {
+                if (str_starts_with($key, substr($pattern, 0, -1))) {
+                    return true;
+                }
+            } elseif ($pattern === $key) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     private static function has_bypass_cookie(): bool
     {
