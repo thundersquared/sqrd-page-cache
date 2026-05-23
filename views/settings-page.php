@@ -53,6 +53,23 @@ $nginx_preview = str_replace(
                 </td>
             </tr>
             <tr>
+                <th scope="row">Minify HTML</th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="sqrd_cache_minify_html" value="1"
+                            <?php checked(get_option('sqrd_cache_minify_html', true)); ?>>
+                        Strip whitespace and non-conditional comments from cached HTML before write
+                    </label>
+                    <p class="description">
+                        Markdown variants are left untouched. Inline <code>&lt;script&gt;</code> /
+                        <code>&lt;style&gt;</code> / <code>&lt;pre&gt;</code> / <code>&lt;textarea&gt;</code>
+                        and conditional comments (<code>&lt;!--[if IE]&gt;</code>) are preserved
+                        automatically. Wrap any region in <code>&lt;nocompress&gt;…&lt;/nocompress&gt;</code>
+                        to keep its original formatting.
+                    </p>
+                </td>
+            </tr>
+            <tr>
                 <th scope="row">Pre-compress</th>
                 <td>
                     <label>

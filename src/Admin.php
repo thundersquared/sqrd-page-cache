@@ -50,6 +50,11 @@ class Admin
             'default'           => true,
             'sanitize_callback' => 'rest_sanitize_boolean',
         ]);
+        register_setting(self::OPTION_GROUP, 'sqrd_cache_minify_html', [
+            'type'              => 'boolean',
+            'default'           => true,
+            'sanitize_callback' => 'rest_sanitize_boolean',
+        ]);
         register_setting(self::OPTION_GROUP, 'sqrd_cache_exclude_paths', [
             'type'              => 'array',
             'default'           => ['/cart', '/checkout', '/my-account', '/wp-json', '/feed'],

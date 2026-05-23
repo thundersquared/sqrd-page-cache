@@ -163,6 +163,18 @@ class Output
         $host = $_SERVER['HTTP_HOST'] ?? (string) parse_url((string) home_url(), PHP_URL_HOST);
         $path = Paths::file_for($host, $request_uri, $response_ext);
 
+        // Minify HTML variants before persisting. Markdown is left untouched —
+        // minifying markdown would corrupt list/paragraph structure. Disk and
+        // live response stay byte-identical because we reassign $buffer here.
+        if ($response_ext === 'html') {
+            $buffer = Minifier::html($buffer);
+            // Drop any stale Content-Length so the smaller body isn't truncated
+            // by an oversized value WP or another plugin may have set.
+            if (!headers_sent()) {
+                header_remove('Content-Length');
+            }
+        }
+
         $compress = (bool) get_option('sqrd_cache_compress', true);
 
         try {
