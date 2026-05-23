@@ -35,6 +35,12 @@ class Invalidator
         add_action('update_option_page_on_front',               [self::class, 'flush_all']);
         add_action('update_option_page_for_posts',              [self::class, 'flush_all']);
         add_action('wp_update_nav_menu',                        [self::class, 'flush_all']);
+
+        // Plugin lifecycle and upgrades — Varnish must drop stale objects
+        // even when the local disk store is untouched.
+        add_action('activated_plugin',           [self::class, 'flush_all']);
+        add_action('deactivated_plugin',         [self::class, 'flush_all']);
+        add_action('upgrader_process_complete',  [self::class, 'flush_all']);
     }
 
     public static function on_post_change(int $post_id): void
@@ -46,6 +52,7 @@ class Invalidator
 
         $urls = self::urls_for_post($post);
         Store::purge_urls($urls);
+        Varnish::purge_urls($urls);
     }
 
     public static function on_comment(int $comment_id, mixed $comment_approved = null): void
@@ -65,6 +72,7 @@ class Invalidator
     public static function flush_all(): void
     {
         Store::flush_all();
+        Varnish::purge_all();
     }
 
     // -------------------------------------------------------------------------

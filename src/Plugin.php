@@ -64,11 +64,16 @@ class Plugin
                 '/feed',
             ]);
         }
+
+        // Flush upstream Varnish so a fresh activation starts from a known-clean state.
+        Varnish::purge_all();
     }
 
     public static function on_deactivate(): void
     {
-        // Intentionally does NOT flush the cache — files remain for inspection.
-        // Use "Purge all" in admin if needed before reactivating or uninstalling.
+        // Local disk files remain for inspection — use "Purge all" in admin to clear.
+        // Upstream Varnish is flushed so stale cached objects don't outlive the plugin
+        // (otherwise visitors would keep seeing cached pages until Varnish TTL expires).
+        Varnish::purge_all();
     }
 }

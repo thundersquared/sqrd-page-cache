@@ -6,10 +6,16 @@ namespace sqrd\Cache;
 
 class Store
 {
+    /** Brotli quality (0–11). 5 mirrors gzencode($body, 6) cost/ratio. */
+    private const BROTLI_QUALITY = 5;
+    /** Brotli mode literal: 0=GENERIC, 1=TEXT, 2=FONT. Constants aren't defined in older ext-brotli builds. */
+    private const BROTLI_MODE_TEXT = 1;
+
     private function __construct() {}
 
     /**
-     * Write the response body to disk, optionally alongside a pre-compressed sibling.
+     * Write the response body to disk, optionally alongside pre-compressed siblings
+     * (.gz always when $compress, .br additionally when ext-brotli is loaded).
      * Uses atomic temp-file + rename to avoid partial reads by nginx.
      *
      * @throws \RuntimeException on write failure
@@ -20,10 +26,19 @@ class Store
 
         self::atomic_write($path, $body);
 
-        if ($compress) {
-            $gz = gzencode($body, 6);
-            if ($gz !== false) {
-                self::atomic_write($path . '.gz', $gz);
+        if (!$compress) {
+            return;
+        }
+
+        $gz = gzencode($body, 6);
+        if ($gz !== false) {
+            self::atomic_write($path . '.gz', $gz);
+        }
+
+        if (function_exists('brotli_compress')) {
+            $br = @brotli_compress($body, self::BROTLI_QUALITY, self::BROTLI_MODE_TEXT);
+            if ($br !== false) {
+                self::atomic_write($path . '.br', $br);
             }
         }
     }
@@ -50,7 +65,7 @@ class Store
 
         foreach (['html', 'md'] as $ext) {
             $base = Paths::file_for($host, $path, $ext);
-            foreach ([$base, $base . '.gz', $base . '.headers'] as $file) {
+            foreach ([$base, $base . '.gz', $base . '.br', $base . '.headers'] as $file) {
                 if (is_file($file)) {
                     @unlink($file);
                 }

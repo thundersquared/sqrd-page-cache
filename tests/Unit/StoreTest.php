@@ -76,6 +76,36 @@ describe('Store::write_body', function (): void {
         Store::write_body($path, 'second', false);
         expect(file_get_contents($path))->toBe('second');
     });
+
+    it('writes a .br sibling when compress=true and ext-brotli is loaded', function (): void {
+        if (!function_exists('brotli_compress')) {
+            $this->markTestSkipped('ext-brotli not loaded');
+        }
+        $path = $this->tmp . '/example.com/index.html';
+        Store::write_body($path, 'compressed body', true);
+        expect(is_file($path . '.br'))->toBeTrue();
+        expect(brotli_uncompress((string) file_get_contents($path . '.br')))->toBe('compressed body');
+    });
+
+    it('does not write .br when compress=false', function (): void {
+        if (!function_exists('brotli_compress')) {
+            $this->markTestSkipped('ext-brotli not loaded');
+        }
+        $path = $this->tmp . '/example.com/index.html';
+        Store::write_body($path, 'body', false);
+        expect(is_file($path . '.br'))->toBeFalse();
+    });
+
+    it('skips .br silently when ext-brotli is absent', function (): void {
+        if (function_exists('brotli_compress')) {
+            $this->markTestSkipped('ext-brotli is loaded — cannot exercise absence path');
+        }
+        $path = $this->tmp . '/example.com/index.html';
+        Store::write_body($path, 'body', true);
+        expect(is_file($path))->toBeTrue();
+        expect(is_file($path . '.gz'))->toBeTrue();
+        expect(is_file($path . '.br'))->toBeFalse();
+    });
 });
 
 // ── write_headers ─────────────────────────────────────────────────────────────
@@ -132,7 +162,10 @@ describe('Store::purge_url', function (): void {
         // Create a full set of cache files to verify purge deletes all variants.
         $dir = $this->tmp . '/example.com/about/';
         mkdir($dir, 0755, true);
-        foreach (['index.html', 'index.html.gz', 'index.html.headers', 'index.md', 'index.md.gz', 'index.md.headers'] as $f) {
+        foreach ([
+            'index.html', 'index.html.gz', 'index.html.br', 'index.html.headers',
+            'index.md',   'index.md.gz',   'index.md.br',   'index.md.headers',
+        ] as $f) {
             file_put_contents($dir . $f, 'data');
         }
     });
@@ -154,6 +187,7 @@ describe('Store::purge_url', function (): void {
         Store::purge_url('https://example.com/about/');
         expect(is_file($this->tmp . '/example.com/about/index.html'))->toBeFalse();
         expect(is_file($this->tmp . '/example.com/about/index.html.gz'))->toBeFalse();
+        expect(is_file($this->tmp . '/example.com/about/index.html.br'))->toBeFalse();
         expect(is_file($this->tmp . '/example.com/about/index.html.headers'))->toBeFalse();
     });
 
@@ -161,6 +195,7 @@ describe('Store::purge_url', function (): void {
         Store::purge_url('https://example.com/about/');
         expect(is_file($this->tmp . '/example.com/about/index.md'))->toBeFalse();
         expect(is_file($this->tmp . '/example.com/about/index.md.gz'))->toBeFalse();
+        expect(is_file($this->tmp . '/example.com/about/index.md.br'))->toBeFalse();
         expect(is_file($this->tmp . '/example.com/about/index.md.headers'))->toBeFalse();
     });
 

@@ -55,10 +55,35 @@ class Admin
             'default'           => ['/cart', '/checkout', '/my-account', '/wp-json', '/feed'],
             'sanitize_callback' => [self::class, 'sanitize_exclude_paths'],
         ]);
+
+        register_setting(self::OPTION_GROUP, 'sqrd_varnish_enabled', [
+            'type'              => 'boolean',
+            'default'           => false,
+            'sanitize_callback' => 'rest_sanitize_boolean',
+        ]);
+        register_setting(self::OPTION_GROUP, 'sqrd_varnish_hosts', [
+            'type'              => 'array',
+            'default'           => [],
+            'sanitize_callback' => [self::class, 'sanitize_varnish_hosts'],
+        ]);
+        register_setting(self::OPTION_GROUP, 'sqrd_varnish_tag_prefix', [
+            'type'              => 'string',
+            'default'           => '',
+            'sanitize_callback' => 'sanitize_text_field',
+        ]);
     }
 
     /** @return list<string> */
     public static function sanitize_exclude_paths(mixed $raw): array
+    {
+        if (is_string($raw)) {
+            $raw = explode("\n", $raw);
+        }
+        return array_values(array_filter(array_map('trim', (array) $raw)));
+    }
+
+    /** @return list<string> */
+    public static function sanitize_varnish_hosts(mixed $raw): array
     {
         if (is_string($raw)) {
             $raw = explode("\n", $raw);
@@ -99,12 +124,19 @@ class Admin
 
     public static function show_notices(): void
     {
-        if (
-            isset($_GET['sqrd_purged']) &&
-            current_user_can('manage_options') &&
-            get_current_screen()?->id === 'settings_page_' . self::MENU_SLUG
-        ) {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+        if (get_current_screen()?->id !== 'settings_page_' . self::MENU_SLUG) {
+            return;
+        }
+
+        if (isset($_GET['sqrd_purged'])) {
             echo '<div class="notice notice-success is-dismissible"><p><strong>SQRD Page Cache:</strong> All cached pages have been purged.</p></div>';
+        }
+
+        if (get_option('sqrd_cache_compress', true) && !function_exists('brotli_compress')) {
+            echo '<div class="notice notice-warning is-dismissible"><p><strong>SQRD Page Cache:</strong> Pre-compress is enabled but the PHP <code>brotli</code> extension is not loaded — only <code>.gz</code> siblings will be written. Install <a href="https://github.com/kjdev/php-ext-brotli">kjdev/php-ext-brotli</a> and reload PHP-FPM to enable <code>.br</code> output.</p></div>';
         }
     }
 

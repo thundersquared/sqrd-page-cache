@@ -12,6 +12,11 @@ $stats    = Store::stats();
 $exclude  = get_option('sqrd_cache_exclude_paths', []);
 $nginx_conf = file_get_contents(dirname(__DIR__) . '/nginx/sqrd-page-cache.conf');
 $cache_root = Paths::cache_root();
+$has_brotli = function_exists('brotli_compress');
+
+$varnish_enabled    = (bool) get_option('sqrd_varnish_enabled', false);
+$varnish_hosts      = (array) get_option('sqrd_varnish_hosts', []);
+$varnish_tag_prefix = (string) get_option('sqrd_varnish_tag_prefix', '');
 
 // Substitute the actual cache root path in the nginx config preview.
 $nginx_preview = str_replace(
@@ -53,8 +58,12 @@ $nginx_preview = str_replace(
                     <label>
                         <input type="checkbox" name="sqrd_cache_compress" value="1"
                             <?php checked(get_option('sqrd_cache_compress', true)); ?>>
-                        Write <code>.gz</code> siblings for use with nginx <code>gzip_static on</code>
+                        Write <code>.gz</code><?php echo $has_brotli ? ' and <code>.br</code>' : ''; ?> siblings for use with nginx
+                        <code>gzip_static on</code><?php echo $has_brotli ? ' / <code>brotli_static on</code>' : ''; ?>
                     </label>
+                    <?php if (!$has_brotli) : ?>
+                        <p class="description">PHP <code>brotli</code> extension not detected — only gzip siblings will be written.</p>
+                    <?php endif; ?>
                 </td>
             </tr>
             <tr>
@@ -66,6 +75,54 @@ $nginx_preview = str_replace(
                     ?></textarea>
                     <p class="description">
                         One path prefix or regex per line. Example: <code>/cart</code>, <code>~/my-account/orders/\d+/</code>
+                    </p>
+                </td>
+            </tr>
+        </table>
+
+        <h2>Varnish integration</h2>
+        <p class="description">
+            When enabled, the plugin issues <code>PURGE</code> per-URL and <code>BAN /</code> for
+            full flushes to each configured Varnish endpoint. Every request carries an
+            <code>X-Cache-Tag-Prefix</code> header so a multi-tenant Varnish can scope the BAN
+            to this domain only. Failures are logged via <code>error_log</code> and do not
+            block the WordPress request.
+        </p>
+
+        <table class="form-table" role="presentation">
+            <tr>
+                <th scope="row">Enable Varnish purge</th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="sqrd_varnish_enabled" value="1"
+                            <?php checked($varnish_enabled); ?>>
+                        Send purge requests to upstream Varnish on cache invalidation
+                    </label>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="sqrd_varnish_hosts">Varnish hosts</label></th>
+                <td>
+                    <textarea id="sqrd_varnish_hosts" name="sqrd_varnish_hosts"
+                        rows="4" class="large-text code"
+                        placeholder="127.0.0.1:6081&#10;http://varnish-2.internal:6081"><?php
+                        echo esc_textarea(implode("\n", $varnish_hosts));
+                    ?></textarea>
+                    <p class="description">
+                        One <code>host[:port]</code> per line. Scheme defaults to <code>http://</code>.
+                        All hosts receive every purge.
+                    </p>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="sqrd_varnish_tag_prefix">Cache tag prefix</label></th>
+                <td>
+                    <input type="text" id="sqrd_varnish_tag_prefix" name="sqrd_varnish_tag_prefix"
+                        value="<?php echo esc_attr($varnish_tag_prefix); ?>"
+                        class="regular-text" placeholder="example-com">
+                    <p class="description">
+                        Sent as <code>X-Cache-Tag-Prefix</code> on every purge. Use this to scope
+                        a BAN to a single domain on a shared Varnish. Leave empty to omit the header.
                     </p>
                 </td>
             </tr>
