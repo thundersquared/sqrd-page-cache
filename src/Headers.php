@@ -25,7 +25,7 @@ class Headers
 
     /**
      * Default allow-list of headers worth preserving alongside the cached body.
-     * Filterable at runtime via the sqrd_cache_significant_headers filter.
+     * Filterable at runtime via the sqrd_page_cache/significant_headers filter.
      *
      * @return list<string> lowercase header names
      */
@@ -50,7 +50,7 @@ class Headers
         ];
 
         /** @var list<string> $list */
-        $list = (array) apply_filters('sqrd_cache_significant_headers', $defaults);
+        $list = (array) apply_filters('sqrd_page_cache/significant_headers', $defaults);
 
         return array_map('strtolower', $list);
     }

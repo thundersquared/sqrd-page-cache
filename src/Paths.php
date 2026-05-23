@@ -67,7 +67,7 @@ class Paths
     public static function cache_root(): string
     {
         return (string) apply_filters(
-            'sqrd_cache_root',
+            'sqrd_page_cache/root',
             WP_CONTENT_DIR . '/cache/sqrd-page-cache'
         );
     }

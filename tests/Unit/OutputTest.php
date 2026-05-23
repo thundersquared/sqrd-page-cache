@@ -79,10 +79,10 @@ describe('Output::tracking_params', function (): void {
         expect($patterns)->toContain('gclid');
     });
 
-    it('honours additions via the sqrd_cache_tracking_params filter', function (): void {
+    it('honours additions via the sqrd_page_cache/tracking_params filter', function (): void {
         Brain\Monkey\Functions\when('apply_filters')->alias(
             fn(string $tag, mixed $value): mixed =>
-                $tag === 'sqrd_cache_tracking_params'
+                $tag === 'sqrd_page_cache/tracking_params'
                     ? [...$value, '_clck', 'ttclid']
                     : $value
         );

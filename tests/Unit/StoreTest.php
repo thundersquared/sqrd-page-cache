@@ -11,7 +11,7 @@ if (!defined('WP_CONTENT_DIR')) {
 }
 
 // Each test gets an isolated temp directory as the cache root.
-// We override apply_filters('sqrd_cache_root', ...) to return it.
+// We override apply_filters('sqrd_page_cache/root', ...) to return it.
 
 function sqrd_temp_root(): string
 {
@@ -25,7 +25,7 @@ describe('Store::write_body', function (): void {
         $this->tmp = sqrd_temp_root();
 
         Monkey\Functions\when('apply_filters')->alias(function (string $tag, mixed $value): mixed {
-            return $tag === 'sqrd_cache_root' ? $this->tmp : $value;
+            return $tag === 'sqrd_page_cache/root' ? $this->tmp : $value;
         });
     });
 
@@ -114,7 +114,7 @@ describe('Store::write_headers', function (): void {
     beforeEach(function (): void {
         $this->tmp = sqrd_temp_root();
         Monkey\Functions\when('apply_filters')->alias(function (string $tag, mixed $value): mixed {
-            return $tag === 'sqrd_cache_root' ? $this->tmp : $value;
+            return $tag === 'sqrd_page_cache/root' ? $this->tmp : $value;
         });
     });
 
@@ -157,7 +157,7 @@ describe('Store::purge_url', function (): void {
     beforeEach(function (): void {
         $this->tmp = sqrd_temp_root();
         Monkey\Functions\when('apply_filters')->alias(function (string $tag, mixed $value): mixed {
-            return $tag === 'sqrd_cache_root' ? $this->tmp : $value;
+            return $tag === 'sqrd_page_cache/root' ? $this->tmp : $value;
         });
         // Create a full set of cache files to verify purge deletes all variants.
         $dir = $this->tmp . '/example.com/about/';
@@ -210,7 +210,7 @@ describe('Store::flush_all', function (): void {
     beforeEach(function (): void {
         $this->tmp = sqrd_temp_root();
         Monkey\Functions\when('apply_filters')->alias(function (string $tag, mixed $value): mixed {
-            return $tag === 'sqrd_cache_root' ? $this->tmp : $value;
+            return $tag === 'sqrd_page_cache/root' ? $this->tmp : $value;
         });
         // Seed some files.
         mkdir($this->tmp . '/example.com/about', 0755, true);
@@ -257,7 +257,7 @@ describe('Store::stats', function (): void {
     beforeEach(function (): void {
         $this->tmp = sqrd_temp_root();
         Monkey\Functions\when('apply_filters')->alias(function (string $tag, mixed $value): mixed {
-            return $tag === 'sqrd_cache_root' ? $this->tmp : $value;
+            return $tag === 'sqrd_page_cache/root' ? $this->tmp : $value;
         });
     });
 

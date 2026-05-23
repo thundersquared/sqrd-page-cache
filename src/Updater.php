@@ -13,8 +13,8 @@ namespace sqrd\Cache;
  * `sqrd-page-cache/` directory — exactly what WP expects for installation.
  *
  * To point at a different repo, use the filters:
- *   add_filter('sqrd_cache_github_owner', fn() => 'myorg');
- *   add_filter('sqrd_cache_github_repo',  fn() => 'my-page-cache-fork');
+ *   add_filter('sqrd_page_cache/github_owner', fn() => 'myorg');
+ *   add_filter('sqrd_page_cache/github_repo',  fn() => 'my-page-cache-fork');
  */
 class Updater
 {
@@ -248,8 +248,8 @@ class Updater
     {
         return sprintf(
             'https://api.github.com/repos/%s/%s/releases/latest',
-            rawurlencode((string) apply_filters('sqrd_cache_github_owner', self::GITHUB_OWNER)),
-            rawurlencode((string) apply_filters('sqrd_cache_github_repo', self::GITHUB_REPO)),
+            rawurlencode((string) apply_filters('sqrd_page_cache/github_owner', self::GITHUB_OWNER)),
+            rawurlencode((string) apply_filters('sqrd_page_cache/github_repo', self::GITHUB_REPO)),
         );
     }
 
@@ -257,8 +257,8 @@ class Updater
     {
         return sprintf(
             'https://github.com/%s/%s',
-            (string) apply_filters('sqrd_cache_github_owner', self::GITHUB_OWNER),
-            (string) apply_filters('sqrd_cache_github_repo', self::GITHUB_REPO),
+            (string) apply_filters('sqrd_page_cache/github_owner', self::GITHUB_OWNER),
+            (string) apply_filters('sqrd_page_cache/github_repo', self::GITHUB_REPO),
         );
     }
 }

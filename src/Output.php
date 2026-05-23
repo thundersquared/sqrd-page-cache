@@ -16,7 +16,7 @@ class Output
      *   utm_*  matches utm_source, utm_medium, ...
      *
      * Extend at runtime:
-     *   add_filter('sqrd_cache_tracking_params', fn(array $p): array =>
+     *   add_filter('sqrd_page_cache/tracking_params', fn(array $p): array =>
      *       [...$p, '_clck', 'ttclid', 'twclid']
      *   );
      *
@@ -66,7 +66,7 @@ class Output
 
         // Skip if query string contains anything beyond tracking params.
         // Bypass logic mirrors the nginx include — keep both in sync if you extend
-        // the tracking pattern list via the sqrd_cache_tracking_params filter.
+        // the tracking pattern list via the sqrd_page_cache/tracking_params filter.
         if (!self::is_tracking_only($_GET)) {
             return;
         }
@@ -208,7 +208,7 @@ class Output
     public static function tracking_params(): array
     {
         /** @var list<string> $patterns */
-        $patterns = (array) apply_filters('sqrd_cache_tracking_params', self::TRACKING_PATTERNS);
+        $patterns = (array) apply_filters('sqrd_page_cache/tracking_params', self::TRACKING_PATTERNS);
         return $patterns;
     }
 
