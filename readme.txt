@@ -156,8 +156,8 @@ guard skips the write to avoid poisoning nginx's lookup.
 == Changelog ==
 
 = 0.1.1 =
-* New filter `sqrd_page_cache/respect_donotcachepage` (default `true`) lets variant-isolated setups opt out of bailing on the generic `DONOTCACHEPAGE` constant.
-* When the filter is set to `false`, also signals `post_content_to_markdown/cache_md_urls` so the Roots markdown plugin stops defining `DONOTCACHEPAGE` on `.md` URLs and Accept-keyed markdown gets cached.
+* New filter `sqrd_page_cache/respect_donotcachepage` (default `false`): sqrd ignores the generic `DONOTCACHEPAGE` constant by default — its parity guard already prevents cross-variant poisoning, so the bypass is overly conservative. Filter to `true` to restore the legacy behavior.
+* Plugin now drives `post_content_to_markdown/cache_md_urls` from the same filter, so the Roots markdown plugin stops defining `DONOTCACHEPAGE` on `.md` URLs out of the box and Accept-keyed markdown is cached without extra setup.
 
 = 0.1.0 =
 * Varnish purge integration: per-URL `PURGE` and full-flush `BAN /` to every configured Varnish host, scoped by `X-Cache-Tag-Prefix` for multi-tenant setups.
@@ -171,7 +171,7 @@ guard skips the write to avoid poisoning nginx's lookup.
 == Upgrade Notice ==
 
 = 0.1.1 =
-Adds opt-out filter for `DONOTCACHEPAGE`. To cache markdown variants when using roots/post-content-to-markdown, drop in a mu-plugin: `add_filter('sqrd_page_cache/respect_donotcachepage', '__return_false');`.
+Now ignores `DONOTCACHEPAGE` by default and bridges to roots/post-content-to-markdown so Accept-keyed and `.md`-URL markdown both cache out of the box. To restore the previous strict behavior, add `add_filter('sqrd_page_cache/respect_donotcachepage', '__return_true');` in a mu-plugin.
 
 = 0.1.0 =
 Adds upstream Varnish purge and Brotli pre-compression. Configure Varnish hosts under Settings → SQRD Page Cache before enabling. Requires ngx_brotli compiled into nginx to serve `.br` siblings.
