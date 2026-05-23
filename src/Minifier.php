@@ -52,7 +52,13 @@ class Minifier
             ->doOptimizeViaHtmlDomParser(true)
             ->doSumUpWhitespace(true)
             ->doRemoveWhitespaceAroundTags(true)
-            ->doRemoveComments(true);
+            ->doRemoveComments(true)
+            // WHATWG allows omitting </html>, </body>, </p>, </li>, </td>, </tr>,
+            // </option>, etc. — browsers parse fine, but missing closing tags
+            // break regex-based HTML tooling, snapshot tests, and confuse anyone
+            // viewing source. Keep the explicit end tags.
+            ->doRemoveOmittedHtmlTags(false)
+            ->doRemoveOmittedQuotes(false);
 
         $filtered = apply_filters('sqrd_cache_minify_html_options', $minifier);
         return is_object($filtered) && method_exists($filtered, 'minify')

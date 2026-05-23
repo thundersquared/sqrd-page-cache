@@ -4,7 +4,7 @@ Tags:              cache, page cache, nginx, markdown, performance
 Requires at least: 6.4
 Tested up to:      6.8
 Requires PHP:      8.3
-Stable tag:        0.1.3
+Stable tag:        0.1.4
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -155,6 +155,9 @@ guard skips the write to avoid poisoning nginx's lookup.
 
 == Changelog ==
 
+= 0.1.4 =
+* Minifier no longer applies WHATWG's optional end-tag omission rules — closing `</html>`, `</body>`, `</p>`, `</li>`, `</td>`, etc. are preserved. Browser parsing was always fine without them, but the missing tags surprised devtools/snapshot/regex tooling. Attribute quotes are likewise preserved.
+
 = 0.1.3 =
 * HTML minification on cache write via the [akankov/html-min](https://packagist.org/packages/akankov/html-min) library. Strips redundant whitespace, line breaks, and non-conditional HTML comments before the file is persisted and before the response goes back to the client — typical WP pages shrink 15-25% before gzip/brotli compression. On by default; toggle under **Settings → SQRD Page Cache**.
 * Markdown variants are never minified (would corrupt list/paragraph structure). Inline `<script>` / `<style>` / `<pre>` / `<textarea>` and IE conditional comments are protected automatically by the library. Per-region opt-out: wrap any block in `<nocompress>…</nocompress>`.
@@ -178,6 +181,9 @@ guard skips the write to avoid poisoning nginx's lookup.
 * Initial release.
 
 == Upgrade Notice ==
+
+= 0.1.4 =
+Minifier now keeps explicit closing tags and attribute quotes. Purge the cache once after upgrading so existing files get rewritten with the full markup.
 
 = 0.1.3 =
 HTML minification is on by default. Purge the cache once after upgrading so existing un-minified files get rewritten on next visit. Opt out in **Settings → SQRD Page Cache** if it interferes with anything.

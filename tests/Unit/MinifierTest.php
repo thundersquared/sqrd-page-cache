@@ -70,6 +70,19 @@ describe('Minifier::html', function (): void {
         expect($out)->toContain('var x = 1;');
     });
 
+    it('keeps explicit closing tags (does not apply WHATWG omitted-tag rules)', function (): void {
+        sqrd_minifier_setup();
+
+        $html = "<html><body><p>First</p><p>Second</p><ul><li>a</li><li>b</li></ul></body></html>";
+        $out  = Minifier::html($html);
+
+        // Browser-legal omissions disabled — every closing tag survives.
+        expect($out)->toContain('</html>');
+        expect($out)->toContain('</body>');
+        expect(substr_count($out, '</p>'))->toBe(2);
+        expect(substr_count($out, '</li>'))->toBe(2);
+    });
+
     it('preserves IE conditional comments', function (): void {
         sqrd_minifier_setup();
 
