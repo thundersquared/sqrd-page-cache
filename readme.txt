@@ -4,7 +4,7 @@ Tags:              cache, page cache, nginx, markdown, performance
 Requires at least: 6.4
 Tested up to:      6.8
 Requires PHP:      8.3
-Stable tag:        0.1.4
+Stable tag:        0.1.5
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -122,7 +122,7 @@ stored headers into the cached response without any PHP involvement.
 
 The default allow-list of captured headers can be extended at runtime:
 
-    add_filter('sqrd_cache_significant_headers', function (array $list): array {
+    add_filter('sqrd_page_cache/significant_headers', function (array $list): array {
         $list[] = 'x-my-custom-header';
         return $list;
     });
@@ -155,6 +155,16 @@ guard skips the write to avoid poisoning nginx's lookup.
 
 == Changelog ==
 
+= 0.1.5 =
+* **Breaking — filter renames.** Five legacy underscore-prefixed filters renamed to the modern slash-namespaced convention (matching `sqrd_page_cache/respect_donotcachepage` and `sqrd_page_cache/minify_html_options`):
+  * `sqrd_cache_significant_headers` → `sqrd_page_cache/significant_headers`
+  * `sqrd_cache_root` → `sqrd_page_cache/root`
+  * `sqrd_cache_tracking_params` → `sqrd_page_cache/tracking_params`
+  * `sqrd_cache_github_owner` → `sqrd_page_cache/github_owner`
+  * `sqrd_cache_github_repo` → `sqrd_page_cache/github_repo`
+* Anyone hooking the legacy names must rename their callback strings. The old hook names are no longer fired.
+* WordPress option names (`sqrd_cache_enabled`, `sqrd_cache_ttl_hours`, etc.) and admin-post action names are intentionally unchanged — renaming options would break existing installs.
+
 = 0.1.4 =
 * Minifier no longer applies WHATWG's optional end-tag omission rules — closing `</html>`, `</body>`, `</p>`, `</li>`, `</td>`, etc. are preserved. Browser parsing was always fine without them, but the missing tags surprised devtools/snapshot/regex tooling. Attribute quotes are likewise preserved.
 * Filter rename: `sqrd_cache_minify_html_options` → `sqrd_page_cache/minify_html_options` (slash-namespaced to match the rest of the modern filter surface like `sqrd_page_cache/respect_donotcachepage`). Anyone hooking the 0.1.3-era name must rename their callback.
@@ -182,6 +192,9 @@ guard skips the write to avoid poisoning nginx's lookup.
 * Initial release.
 
 == Upgrade Notice ==
+
+= 0.1.5 =
+Breaking: five filters renamed to the `sqrd_page_cache/` slash-namespace. If you hook `sqrd_cache_significant_headers`, `sqrd_cache_root`, `sqrd_cache_tracking_params`, `sqrd_cache_github_owner`, or `sqrd_cache_github_repo` anywhere, rename the callback string to the slash-prefixed form before upgrading. Option names are unchanged.
 
 = 0.1.4 =
 Minifier now keeps explicit closing tags and attribute quotes. Purge the cache once after upgrading so existing files get rewritten with the full markup.
