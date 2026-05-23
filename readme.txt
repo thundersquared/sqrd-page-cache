@@ -4,7 +4,7 @@ Tags:              cache, page cache, nginx, markdown, performance
 Requires at least: 6.4
 Tested up to:      6.8
 Requires PHP:      8.3
-Stable tag:        1.0.0
+Stable tag:        0.1.0
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -155,10 +155,19 @@ guard skips the write to avoid poisoning nginx's lookup.
 
 == Changelog ==
 
-= 1.0.0 =
+= 0.1.0 =
+* Varnish purge integration: per-URL `PURGE` and full-flush `BAN /` to every configured Varnish host, scoped by `X-Cache-Tag-Prefix` for multi-tenant setups.
+* New invalidation hooks: plugin activate/deactivate, `upgrader_process_complete` (any plugin/theme/core upgrade), plus Varnish flush on plugin activate/deactivate.
+* Brotli pre-compression: `.br` siblings written alongside `.gz` when ext-brotli is loaded; nginx config gains `brotli_static` block.
+* Admin settings UI for Varnish hosts, enable toggle, and cache tag prefix.
+
+= 0.0.1 =
 * Initial release.
 
 == Upgrade Notice ==
 
-= 1.0.0 =
+= 0.1.0 =
+Adds upstream Varnish purge and Brotli pre-compression. Configure Varnish hosts under Settings → SQRD Page Cache before enabling. Requires ngx_brotli compiled into nginx to serve `.br` siblings.
+
+= 0.0.1 =
 Initial release.  No upgrade path required.
