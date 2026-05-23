@@ -4,7 +4,7 @@ Tags:              cache, page cache, nginx, markdown, performance
 Requires at least: 6.4
 Tested up to:      6.8
 Requires PHP:      8.3
-Stable tag:        0.1.6
+Stable tag:        0.1.7
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -155,6 +155,9 @@ guard skips the write to avoid poisoning nginx's lookup.
 
 == Changelog ==
 
+= 0.1.7 =
+* **Fix — wp-admin assets (and every other static file) loaded with `Content-Type: application/octet-stream`.** The plugin's nginx include declared `types { text/html ...; text/markdown md; }` at server scope, which REPLACES the inherited http-level `mime.types` map entirely. Browsers then refuse the response under strict MIME-type checking (`X-Content-Type-Options: nosniff` is default in modern WP), breaking wp-admin styling/scripts, the block editor, theme assets, and so on. The mapping is now scoped to the internal cache HIT location only, so the rest of the vhost keeps using the system mime.types unmodified. After upgrading, no `nginx -t && systemctl reload nginx` change is needed beyond pulling the new file (the include path is unchanged).
+
 = 0.1.6 =
 * **Security — Host header path traversal.** `Paths::file_for()` previously kept dot characters in the Host header sanitizer, so a request with `Host: ..` produced a cache path of `cache_root/../index.html` — an arbitrary-file overwrite scoped to whatever PHP could write. The sanitizer now rejects empty, dot-only, leading-dot, and double-dot host values, and `Paths::file_for()` enforces a `realpath()`-based bound check so the resolved path must live inside the cache root.
 * **Security — URI traversal silently mapped to home page.** `Paths::normalize_uri()` used to return `/` when the URI contained `..`, which meant any 200 response for a traversal-style URL (custom rewrites, certain themes) would overwrite the home-page cache. Normalization now throws `\InvalidArgumentException` for raw `..` and percent-encoded `%2e%2e` traversal, and `Output::finish()` aborts the cache write when the request is unsafe.
@@ -200,6 +203,9 @@ guard skips the write to avoid poisoning nginx's lookup.
 * Initial release.
 
 == Upgrade Notice ==
+
+= 0.1.7 =
+Hotfix: the nginx include was overriding the vhost's MIME map, serving every css/js/woff/etc. as `application/octet-stream` and breaking wp-admin under strict MIME checking. Pull the new include and reload nginx (`nginx -t && systemctl reload nginx`).
 
 = 0.1.6 =
 Security release — fixes Host-header path traversal, URI-traversal home-page poisoning, symlink-following on `Purge all`, and a tracking-param wildcard footgun. Adds WooCommerce/EDD session cookies to the cache bypass list. Strongly recommended for any public-facing installation. After upgrading, purge the cache once so any stray files written outside the cache root by the old behavior are visible/clean.
