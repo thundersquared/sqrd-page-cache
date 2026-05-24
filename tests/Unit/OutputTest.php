@@ -119,3 +119,37 @@ describe('Output::tracking_params', function (): void {
         expect(Output::is_tracking_only(['_ga' => 'x']))->toBeTrue();
     });
 });
+
+// ── bypass_cookie_prefixes ────────────────────────────────────────────────────
+
+describe('Output::bypass_cookie_prefixes', function (): void {
+    it('includes WordPress core auth/comment/postpass prefixes by default', function (): void {
+        $prefixes = Output::bypass_cookie_prefixes();
+        expect($prefixes)->toContain('wordpress_logged_in_', 'comment_author_', 'wp-postpass_');
+    });
+
+    it('includes WooCommerce + EDD session prefixes — must mirror the nginx alternation', function (): void {
+        // Regression guard: nginx's cookie bypass regex in
+        // nginx/sqrd-page-cache.conf must list these same prefixes, or a
+        // shopper with a cart cookie hits the disk cache before PHP runs.
+        $prefixes = Output::bypass_cookie_prefixes();
+        expect($prefixes)->toContain(
+            'woocommerce_items_in_cart',
+            'woocommerce_cart_hash',
+            'wp_woocommerce_session_',
+            'edd_items_in_cart',
+            'edd_cart_messages',
+        );
+    });
+
+    it('filters out empty strings supplied by sqrd_page_cache/bypass_cookie_prefixes', function (): void {
+        Brain\Monkey\Functions\when('apply_filters')->alias(
+            fn(string $name, mixed $value): mixed =>
+                $name === 'sqrd_page_cache/bypass_cookie_prefixes'
+                    ? ['wp_user_', '', 'cart_']
+                    : $value
+        );
+
+        expect(Output::bypass_cookie_prefixes())->toBe(['wp_user_', 'cart_']);
+    });
+});

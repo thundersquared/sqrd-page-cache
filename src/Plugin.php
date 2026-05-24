@@ -44,6 +44,9 @@ class Plugin
         // Cache invalidation hooks.
         Invalidator::register_hooks();
 
+        // WooCommerce integration — no-op when WC is not loaded.
+        WooCommerce::register_hooks();
+
         // Admin UI.
         if (is_admin() || wp_doing_ajax()) {
             Admin::register_hooks();

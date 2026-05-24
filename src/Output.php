@@ -275,29 +275,57 @@ class Output
         return false;
     }
 
+    /**
+     * Cookie name prefixes whose presence forces a cache bypass.
+     *
+     * MUST mirror the nginx alternation in nginx/sqrd-page-cache.conf line ~85
+     * — both layers run independently and must agree, or a shopper with a
+     * cart cookie hits the disk cache before PHP gets a chance to bail.
+     *
+     * Stock e-commerce session markers (WooCommerce/EDD) are included because
+     * anonymous shoppers carry cart state in these without ever setting a wp
+     * logged-in cookie; without the prefixes their cart-aware HTML would land
+     * in the shared anonymous cache.
+     *
+     * Runtime extension: hook the `sqrd_page_cache/bypass_cookie_prefixes`
+     * filter and append to the array.
+     *
+     * @var list<string>
+     */
+    public const BYPASS_COOKIE_PREFIXES = [
+        'wordpress_logged_in_',
+        'comment_author_',
+        'wp-postpass_',
+        'woocommerce_items_in_cart',
+        'woocommerce_cart_hash',
+        'wp_woocommerce_session_',
+        'edd_items_in_cart',
+        'edd_cart_messages',
+    ];
+
+    /**
+     * Resolved bypass-cookie prefix list with the filter applied.
+     *
+     * @return list<string>
+     */
+    public static function bypass_cookie_prefixes(): array
+    {
+        /** @var list<string> $prefixes */
+        $prefixes = (array) apply_filters('sqrd_page_cache/bypass_cookie_prefixes', self::BYPASS_COOKIE_PREFIXES);
+        return array_values(array_filter($prefixes, static fn(mixed $p): bool => is_string($p) && $p !== ''));
+    }
+
     private static function has_bypass_cookie(): bool
     {
-        $defaults = [
-            'wordpress_logged_in_',
-            'comment_author_',
-            'wp-postpass_',
-            // Stock e-commerce session markers — anonymous shoppers carry
-            // cart state in these without ever setting a wp logged-in cookie,
-            // so without these prefixes their cart-aware HTML would land in
-            // the shared cache.
-            'woocommerce_items_in_cart',
-            'woocommerce_cart_hash',
-            'wp_woocommerce_session_',
-            'edd_items_in_cart',
-            'edd_cart_messages',
-        ];
-
-        /** @var list<string> $prefixes */
-        $prefixes = (array) apply_filters('sqrd_page_cache/bypass_cookie_prefixes', $defaults);
+        $prefixes = self::bypass_cookie_prefixes();
+        if ($prefixes === []) {
+            return false;
+        }
 
         foreach (array_keys($_COOKIE) as $name) {
+            $name = (string) $name;
             foreach ($prefixes as $prefix) {
-                if ($prefix !== '' && str_starts_with((string) $name, (string) $prefix)) {
+                if (str_starts_with($name, $prefix)) {
                     return true;
                 }
             }

@@ -4,7 +4,7 @@ Tags:              cache, page cache, nginx, markdown, performance
 Requires at least: 6.4
 Tested up to:      6.8
 Requires PHP:      8.3
-Stable tag:        0.1.7
+Stable tag:        0.2.0
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -131,9 +131,21 @@ The default allow-list of captured headers can be extended at runtime:
 
 = Does this work with WooCommerce? =
 
-Yes.  Add `/cart`, `/checkout`, and `/my-account` to the *Exclude paths*
-setting.  Also extend the nginx cookie bypass regex to include
-`woocommerce_items_in_cart` so carts with items are never served from cache.
+Yes — automatically, as of 0.2.0.  When WooCommerce is active the plugin
+loads `src/WooCommerce.php`, which (1) hooks product/stock/order-stock
+events to purge affected product, shop, and category pages, (2) flushes
+the entire cache on `woocommerce_settings_saved`, and (3) auto-adds the
+configured cart, checkout, and my-account pages to the exclude list via
+`wc_get_page_id()` — so renamed or localised pages (e.g. `/basket`,
+`/panier`) are covered without extra configuration.
+
+The nginx include already bypasses WooCommerce/EDD session cookies
+(`woocommerce_items_in_cart`, `woocommerce_cart_hash`,
+`wp_woocommerce_session_`, `edd_items_in_cart`, `edd_cart_messages`)
+in lockstep with PHP, so shoppers with active carts are never served the
+anonymous cached page from disk.
+
+To opt out:  `add_filter('sqrd_page_cache/woocommerce_enabled', '__return_false');`
 
 = Does this replace other full-page cache plugins? =
 
@@ -154,6 +166,13 @@ response's `Content-Type`.  If your site returns `text/html` for an
 guard skips the write to avoid poisoning nginx's lookup.
 
 == Changelog ==
+
+= 0.2.0 =
+* **Feature — WooCommerce-aware cache invalidation.** New `sqrd\Cache\WooCommerce` integration auto-activates when WooCommerce is loaded. Purges product, shop, and category pages on `woocommerce_update_product` / `woocommerce_new_product` / `woocommerce_delete_product` / `woocommerce_trash_product` (covering direct CLI/API updates that bypass `save_post`), on stock changes (`woocommerce_product_set_stock`, `woocommerce_variation_set_stock`, plus the `_stock_status` variants), and per line item on `woocommerce_reduce_order_stock` when a checkout completes. Full-cache flush on `woocommerce_settings_saved` (currency, tax, and display rules affect every cached page).
+* **Feature — auto-exclude WooCommerce pages by permalink, not slug.** Cart, checkout, and my-account paths are now appended to the exclude list via `wc_get_page_id()` lookups, so sites that renamed those pages (e.g. `/basket`, `/panier`, `/checkout-pro`) are covered without touching the Admin defaults. The legacy `/cart`, `/checkout`, `/my-account` defaults still ship as belt-and-suspenders for non-WC installs.
+* **Fix — nginx cookie bypass lagged behind PHP.** `nginx/sqrd-page-cache.conf` only listed `wordpress_logged_in_|wp-postpass_|comment_author_` in its bypass regex, while `Output::has_bypass_cookie()` had been recognising five additional WooCommerce/EDD session prefixes since 0.1.6. A shopper with `woocommerce_items_in_cart` would hit nginx first and get the anonymous cached page — PHP never ran. The nginx alternation now mirrors PHP exactly, and a regression test (`OutputTest`) pins the prefix list so they cannot drift apart silently. New CLAUDE.md gotcha documents the sync requirement next to the existing tracking-params one.
+* **API — `Output::BYPASS_COOKIE_PREFIXES` constant and `Output::bypass_cookie_prefixes()` accessor.** The previously inlined list now lives on the class so the nginx mirror has a canonical reference and tests can pin it.
+* **API — `sqrd_page_cache/woocommerce_enabled` filter.** Returns `true` by default when WooCommerce is loaded; filter to `false` to disable the integration without deactivating WC.
 
 = 0.1.7 =
 * **Fix — wp-admin assets (and every other static file) loaded with `Content-Type: application/octet-stream`.** The plugin's nginx include declared `types { text/html ...; text/markdown md; }` at server scope, which REPLACES the inherited http-level `mime.types` map entirely. Browsers then refuse the response under strict MIME-type checking (`X-Content-Type-Options: nosniff` is default in modern WP), breaking wp-admin styling/scripts, the block editor, theme assets, and so on. The mapping is now scoped to the internal cache HIT location only, so the rest of the vhost keeps using the system mime.types unmodified. After upgrading, no `nginx -t && systemctl reload nginx` change is needed beyond pulling the new file (the include path is unchanged).
@@ -203,6 +222,9 @@ guard skips the write to avoid poisoning nginx's lookup.
 * Initial release.
 
 == Upgrade Notice ==
+
+= 0.2.0 =
+WooCommerce sites: the plugin now auto-purges product / shop / category pages on product, stock, and order-stock events, full-flushes on settings save, and auto-excludes the cart / checkout / my-account pages by permalink (covers renamed or localised pages). The nginx include's cookie bypass regex has been extended to mirror the PHP-side list — pull the new file and `nginx -t && systemctl reload nginx` so carted shoppers stop being served the anonymous cached page from disk. No setting changes required.
 
 = 0.1.7 =
 Hotfix: the nginx include was overriding the vhost's MIME map, serving every css/js/woff/etc. as `application/octet-stream` and breaking wp-admin under strict MIME checking. Pull the new include and reload nginx (`nginx -t && systemctl reload nginx`).
