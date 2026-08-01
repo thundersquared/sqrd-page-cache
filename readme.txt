@@ -4,7 +4,7 @@ Tags:              cache, page cache, nginx, markdown, performance
 Requires at least: 6.4
 Tested up to:      6.8
 Requires PHP:      8.3
-Stable tag:        0.3.1
+Stable tag:        0.3.2
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -180,6 +180,9 @@ serving based on the `Accept` header. Do not paste the conversion plugin's
 nginx rewrite snippet.
 
 == Changelog ==
+
+= 0.3.2 =
+* **Docs — CloudPanel (nginx + Varnish) configuration guide.** New README section documenting how to run SQRD Page Cache on CloudPanel's three-server-block, Varnish-fronted WordPress vhosts. Covers the architecture (edge → Varnish → backend/PHP-FPM), the Varnish-vs-disk-page-cache decision, the exact EDGE-server-block config for AVIF/WebP image serving (placed before the static-asset regex so nginx negotiates uploaded images), and compression caveats (CloudPanel's stock nginx 1.30 + PageSpeed has no ngx_brotli). No code changes.
 
 = 0.3.1 =
 * **Hardening — brotli nginx config no longer crashes stock nginx.** brotli_static on and brotli_types were emitted unconditionally in nginx/sqrd-page-cache.conf, which made nginx refuse to start on any build without the ngx_brotli module compiled in. They are now in a separate optional file, nginx/brotli-static.conf, included only when ngx_brotli is present (nginx -V 2>&1 | grep brotli). The main include keeps gzip_static on (stock nginx) and documents the brotli split. **Upgrade: if you previously relied on brotli serving, add the new include after the main one.** The admin Settings page now shows an info notice guiding this when the PHP brotli extension is detected.
