@@ -154,6 +154,57 @@ For a request to `/wp-content/uploads/2024/01/cat.jpg`, nginx resolves `$sqrd_im
 
 Every response carries `Vary: Accept` so CDNs and browsers cache the correct per-client variant, plus a one-year immutable `Cache-Control`.
 
+## CloudPanel (nginx + Varnish)
+
+CloudPanel ships WordPress vhosts as a **three-server-block** architecture with **Varnish** as the front full-page cache:
+
+```
+Client → nginx EDGE (443) → Varnish → nginx BACKEND (8080) → PHP-FPM
+```
+
+- **EDGE (443):** serves static assets (css/js/images) directly via a regex `location ~* \.(css|js|jpg|...|webp)$`, and proxies everything else to Varnish through `location / { {{varnish_proxy_pass}} ... }`.
+- **BACKEND (8080):** `try_files $uri $uri/ /index.php?$args;` plus `location ~ \.php$` → PHP-FPM on `127.0.0.1:{{php_fpm_port}}`, and `include /etc/nginx/global_settings;`.
+- Document root: `/home/<siteUser>/htdocs/<domain>/` (empty `rootDirectory` for WordPress).
+- Edit per-site nginx in **CloudPanel → Site → Vhost Editor** (it syntax-checks and **reverts** on error). On-disk files live under `/etc/nginx/sites-enabled/<domain>.conf`. Reload: `sudo nginx -t && sudo systemctl reload nginx`.
+
+### Page caching: pick ONE
+
+The plugin's disk page cache (`location / { try_files $sqrd_cache_file ... }`) is a **full-page cache and conflicts with CloudPanel's Varnish**. Choose one:
+
+- **Keep CloudPanel Varnish** (recommended on CloudPanel): Varnish is already the page cache. Do not enable the plugin's page-caching output, but DO adopt its image-serving and compression features below. The plugin still writes its cache files to disk harmlessly; they simply won't be the primary page cache.
+- **Use SQRD Page Cache's disk cache instead**: disable Varnish for the site (CloudPanel → Site → Varnish), then add `$sqrd_cache_file` to the **backend (8080)** block's `try_files` and add the plugin's cache `location` include to that block. Because the edge proxies to the backend, verify the edge's `{{varnish_proxy_pass}}` falls through to the backend once Varnish is off. This is a more invasive change and should be staged and tested.
+
+### AVIF/WebP image serving (works with Varnish on)
+
+Uploaded images are served directly by the EDGE block's static-asset location, so image negotiation belongs in the EDGE server block. Add this BEFORE the `location ~* ^.+\.(css|js|jpg|...|webp)$` block so nginx evaluates it first (regex locations win in order of appearance):
+
+```nginx
+# EDGE server block, above the static-asset location:
+set $sqrd_img_ext "";
+if ($http_accept ~* "image/webp") { set $sqrd_img_ext ".webp"; }
+if ($http_accept ~* "image/avif") { set $sqrd_img_ext ".avif"; }
+
+location ~* ^/wp-content/uploads/(?<sqrd_img_base>.+)\.(?<sqrd_img_orig>jpe?g|png)$ {
+    try_files
+        $uri$sqrd_img_ext
+        /wp-content/uploads/$sqrd_img_base$sqrd_img_ext
+        /wp-content/uploads-webpc/$sqrd_img_base.$sqrd_img_orig$sqrd_img_ext
+        $uri =404;
+    types { image/avif avif; image/webp webp; image/jpeg jpg jpeg; image/png png; }
+    default_type image/jpeg;
+    add_header Vary Accept always;
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+    expires 1y;
+    access_log off;
+}
+```
+
+Pair it with a conversion plugin that generates the siblings (CompressX, or WebP Express + AVIF Express) and disable that plugin's own delivery/rewrite.
+
+### Compression
+
+CloudPanel's stock nginx is **1.30 + PageSpeed** and does **not** ship `ngx_brotli` (no `brotli_static`). `gzip_static` is standard and applies to static assets served by the edge. `ngx_brotli` must be compiled in before the `nginx/brotli-static.conf` include will load (verify: `nginx -V 2>&1 | grep brotli`). Pre-compressed siblings are mainly useful when nginx serves the HTML/MD cache directly — with Varnish as the page cache, they chiefly help your CSS/JS/image assets if you enable `gzip_static`.
+
 ## Excluding paths
 
 Add paths or regexes to **Exclude paths** in the settings page (one per line). For WooCommerce:
