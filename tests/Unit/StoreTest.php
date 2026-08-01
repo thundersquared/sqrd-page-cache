@@ -57,11 +57,12 @@ describe('Store::write_body', function (): void {
 
     it('writes a .gz sibling when compress=true', function (): void {
         $path = $this->tmp . '/example.com/index.html';
-        Store::write_body($path, 'compressed body', true);
+        $body = str_repeat('compressed body ', 20);
+        Store::write_body($path, $body, true);
         expect(is_file($path . '.gz'))->toBeTrue();
         // Verify it is valid gzip.
         $decoded = gzdecode((string) file_get_contents($path . '.gz'));
-        expect($decoded)->toBe('compressed body');
+        expect($decoded)->toBe($body);
     });
 
     it('does not write .gz when compress=false', function (): void {
@@ -82,9 +83,10 @@ describe('Store::write_body', function (): void {
             $this->markTestSkipped('ext-brotli not loaded');
         }
         $path = $this->tmp . '/example.com/index.html';
-        Store::write_body($path, 'compressed body', true);
+        $body = str_repeat('compressed body ', 20);
+        Store::write_body($path, $body, true);
         expect(is_file($path . '.br'))->toBeTrue();
-        expect(brotli_uncompress((string) file_get_contents($path . '.br')))->toBe('compressed body');
+        expect(brotli_uncompress((string) file_get_contents($path . '.br')))->toBe($body);
     });
 
     it('does not write .br when compress=false', function (): void {
@@ -101,10 +103,109 @@ describe('Store::write_body', function (): void {
             $this->markTestSkipped('ext-brotli is loaded — cannot exercise absence path');
         }
         $path = $this->tmp . '/example.com/index.html';
-        Store::write_body($path, 'body', true);
+        $body = str_repeat('body content ', 20);
+        Store::write_body($path, $body, true);
         expect(is_file($path))->toBeTrue();
         expect(is_file($path . '.gz'))->toBeTrue();
         expect(is_file($path . '.br'))->toBeFalse();
+    });
+
+    it('skips .gz when the compressed output would be larger than the original', function (): void {
+        // A 1-byte body: the gzip header overhead (~20 bytes) makes the .gz
+        // sibling larger than the original. The sibling must NOT be written, so
+        // nginx falls back to serving the plain file instead of a bigger blob.
+        $path = $this->tmp . '/example.com/index.html';
+        Store::write_body($path, 'a', true);
+        expect(is_file($path))->toBeTrue();
+        expect(is_file($path . '.gz'))->toBeFalse();
+    });
+
+    it('skips .br when the compressed output would be larger than the original', function (): void {
+        if (!function_exists('brotli_compress')) {
+            $this->markTestSkipped('ext-brotli not loaded');
+        }
+        $path = $this->tmp . '/example.com/index.html';
+        Store::write_body($path, 'a', true);
+        expect(is_file($path))->toBeTrue();
+        expect(is_file($path . '.br'))->toBeFalse();
+    });
+
+    it('writes .gz and .br siblings for the markdown variant too', function (): void {
+        $path = $this->tmp . '/example.com/blog/post/index.md';
+        $body = str_repeat('# Heading
+
+Some markdown body text.
+', 20);
+        Store::write_body($path, $body, true);
+        expect(is_file($path))->toBeTrue();
+        expect(is_file($path . '.gz'))->toBeTrue();
+        expect(gzdecode((string) file_get_contents($path . '.gz')))->toBe($body);
+        if (function_exists('brotli_compress')) {
+            expect(is_file($path . '.br'))->toBeTrue();
+            expect(brotli_uncompress((string) file_get_contents($path . '.br')))->toBe($body);
+        }
+    });
+});
+
+// ── gzip_level / brotli_quality ───────────────────────────────────────────────
+
+describe('Store::gzip_level', function (): void {
+    it('returns the default 6 out of the box', function (): void {
+        expect(Store::gzip_level())->toBe(6);
+    });
+
+    it('honours the sqrd_page_cache/gzip_level filter', function (): void {
+        Brain\Monkey\Functions\when('apply_filters')->alias(
+            fn(string $tag, mixed $value): mixed =>
+                $tag === 'sqrd_page_cache/gzip_level' ? 9 : $value
+        );
+        expect(Store::gzip_level())->toBe(9);
+    });
+
+    it('clamps values below 0 up to 0', function (): void {
+        Brain\Monkey\Functions\when('apply_filters')->alias(
+            fn(string $tag, mixed $value): mixed =>
+                $tag === 'sqrd_page_cache/gzip_level' ? -3 : $value
+        );
+        expect(Store::gzip_level())->toBe(0);
+    });
+
+    it('clamps values above 9 down to 9', function (): void {
+        Brain\Monkey\Functions\when('apply_filters')->alias(
+            fn(string $tag, mixed $value): mixed =>
+                $tag === 'sqrd_page_cache/gzip_level' ? 42 : $value
+        );
+        expect(Store::gzip_level())->toBe(9);
+    });
+});
+
+describe('Store::brotli_quality', function (): void {
+    it('returns the default 5 out of the box', function (): void {
+        expect(Store::brotli_quality())->toBe(5);
+    });
+
+    it('honours the sqrd_page_cache/brotli_quality filter', function (): void {
+        Brain\Monkey\Functions\when('apply_filters')->alias(
+            fn(string $tag, mixed $value): mixed =>
+                $tag === 'sqrd_page_cache/brotli_quality' ? 11 : $value
+        );
+        expect(Store::brotli_quality())->toBe(11);
+    });
+
+    it('clamps values below 0 up to 0', function (): void {
+        Brain\Monkey\Functions\when('apply_filters')->alias(
+            fn(string $tag, mixed $value): mixed =>
+                $tag === 'sqrd_page_cache/brotli_quality' ? -1 : $value
+        );
+        expect(Store::brotli_quality())->toBe(0);
+    });
+
+    it('clamps values above 11 down to 11', function (): void {
+        Brain\Monkey\Functions\when('apply_filters')->alias(
+            fn(string $tag, mixed $value): mixed =>
+                $tag === 'sqrd_page_cache/brotli_quality' ? 99 : $value
+        );
+        expect(Store::brotli_quality())->toBe(11);
     });
 });
 

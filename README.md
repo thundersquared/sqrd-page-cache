@@ -18,7 +18,7 @@ A headers sidecar (`index.html.headers` / `index.md.headers`) stores the origina
 ## Features
 
 - Atomic disk writes — no partial reads by nginx
-- Pre-compressed `.gz` siblings (`gzip_static on`) and `.br` siblings when ext-brotli is loaded
+- Pre-compressed `.gz` siblings (`gzip_static on`) and `.br` siblings when ext-brotli is loaded — nginx serves brotli → gzip → plain; siblings larger than the original are skipped automatically
 - Smart invalidation: per-URL purge on `save_post`, full flush on structural changes (theme switch, permalink change, plugin/core upgrades)
 - Varnish purge integration: per-URL `PURGE` and full-flush `BAN /` scoped by `X-Cache-Tag-Prefix` for multi-tenant fleets
 - HTML minification on cache write (15–25% size reduction before gzip)
@@ -180,6 +180,8 @@ Both the PHP exclude list and the nginx cookie pattern must stay in sync.
 | `sqrd_page_cache/tracking_params` | built-in list | Add extra tracking parameter patterns (supports `*` suffix glob) |
 | `sqrd_page_cache/minify_html_options` | configured `HtmlMin` instance | Swap or reconfigure the HTML minifier — accepts any object with `minify(string): string` |
 | `sqrd_page_cache/significant_headers` | standard list | Extend which response headers are written to the `.headers` sidecar |
+| `sqrd_page_cache/gzip_level` | `6` | Gzip compression level (0–9) for `.gz` siblings |
+| `sqrd_page_cache/brotli_quality` | `5` | Brotli compression quality (0–11) for `.br` siblings |
 
 ## HTML minification
 

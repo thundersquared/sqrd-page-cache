@@ -6,6 +6,8 @@ namespace sqrd\Cache;
 
 class Store
 {
+    /** Gzip compression level (0–9). 6 balances ratio and CPU. */
+    private const GZIP_LEVEL = 6;
     /** Brotli quality (0–11). 5 mirrors gzencode($body, 6) cost/ratio. */
     private const BROTLI_QUALITY = 5;
     /** Brotli mode literal: 0=GENERIC, 1=TEXT, 2=FONT. Constants aren't defined in older ext-brotli builds. */
@@ -17,6 +19,11 @@ class Store
      * Write the response body to disk, optionally alongside pre-compressed siblings
      * (.gz always when $compress, .br additionally when ext-brotli is loaded).
      * Uses atomic temp-file + rename to avoid partial reads by nginx.
+     *
+     * Siblings that would be LARGER than the original are skipped — nginx's
+     * gzip_static / brotli_static would otherwise serve the bigger file to any
+     * client that sends Accept-Encoding, wasting bandwidth. Without the sibling
+     * on disk nginx transparently falls back to the plain file.
      *
      * @throws \RuntimeException on write failure
      */
@@ -30,17 +37,53 @@ class Store
             return;
         }
 
-        $gz = gzencode($body, 6);
-        if ($gz !== false) {
+        $original_size = strlen($body);
+
+        // Gzip sibling — ext-zlib is a hard WordPress dependency, so gzencode is
+        // always available. nginx checks gzip_static AFTER brotli_static, so a
+        // client that accepts both gets .br when present and .gz otherwise.
+        $gz = @gzencode($body, self::gzip_level());
+        if ($gz === false) {
+            error_log('sqrd-page-cache: gzencode failed — no .gz sibling will be written');
+        } elseif (strlen($gz) < $original_size) {
             self::atomic_write($path . '.gz', $gz);
         }
 
+        // Brotli sibling — only when ext-brotli (kjdev/php-ext-brotli) is loaded.
+        // nginx serves .br ahead of .gz when the client accepts both, so brotli
+        // is the preferred encoding when available.
         if (function_exists('brotli_compress')) {
-            $br = @brotli_compress($body, self::BROTLI_QUALITY, self::BROTLI_MODE_TEXT);
-            if ($br !== false) {
+            $br = @brotli_compress($body, self::brotli_quality(), self::BROTLI_MODE_TEXT);
+            if ($br === false) {
+                error_log('sqrd-page-cache: brotli_compress failed — no .br sibling will be written');
+            } elseif (strlen($br) < $original_size) {
                 self::atomic_write($path . '.br', $br);
             }
         }
+    }
+
+    /**
+     * Resolved gzip compression level (0–9), filterable via
+     * `sqrd_page_cache/gzip_level`. Clamped to the valid zlib range.
+     */
+    public static function gzip_level(): int
+    {
+        /** @var int|numeric-string $level */
+        $level = apply_filters('sqrd_page_cache/gzip_level', self::GZIP_LEVEL);
+        return max(0, min(9, (int) $level));
+    }
+
+    /**
+     * Resolved brotli compression quality (0–11), filterable via
+     * `sqrd_page_cache/brotli_quality`. Clamped to the valid ext-brotli range.
+     * The kjdev ext-brotli default is 11 (max); 5 is used here to mirror the
+     * cost/ratio of gzencode level 6 on typical HTML.
+     */
+    public static function brotli_quality(): int
+    {
+        /** @var int|numeric-string $quality */
+        $quality = apply_filters('sqrd_page_cache/brotli_quality', self::BROTLI_QUALITY);
+        return max(0, min(11, (int) $quality));
     }
 
     /**

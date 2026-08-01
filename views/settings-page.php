@@ -79,7 +79,9 @@ $nginx_preview = str_replace(
                         <code>gzip_static on</code><?php echo $has_brotli ? ' / <code>brotli_static on</code>' : ''; ?>
                     </label>
                     <?php if (!$has_brotli) : ?>
-                        <p class="description">PHP <code>brotli</code> extension not detected — only gzip siblings will be written.</p>
+                        <p class="description">PHP <code>brotli</code> extension not detected — only gzip siblings will be written. Siblings larger than the original are skipped automatically.</p>
+                    <?php else : ?>
+                        <p class="description">Siblings larger than the original are skipped automatically. To serve <code>.br</code>, add the optional <code>nginx/brotli-static.conf</code> include when <code>ngx_brotli</code> is compiled in.</p>
                     <?php endif; ?>
                 </td>
             </tr>

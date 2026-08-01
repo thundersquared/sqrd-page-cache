@@ -143,6 +143,10 @@ class Admin
         if (get_option('sqrd_cache_compress', true) && !function_exists('brotli_compress')) {
             echo '<div class="notice notice-warning is-dismissible"><p><strong>SQRD Page Cache:</strong> Pre-compress is enabled but the PHP <code>brotli</code> extension is not loaded — only <code>.gz</code> siblings will be written. Install <a href="https://github.com/kjdev/php-ext-brotli">kjdev/php-ext-brotli</a> and reload PHP-FPM to enable <code>.br</code> output.</p></div>';
         }
+
+        if (get_option('sqrd_cache_compress', true) && function_exists('brotli_compress')) {
+            echo '<div class="notice notice-info is-dismissible"><p><strong>SQRD Page Cache:</strong> The PHP <code>brotli</code> extension is loaded — <code>.br</code> siblings will be written. To serve them, add the optional brotli nginx include inside your <code>server { }</code> block (after the main include): <code>include /path/to/.../sqrd-page-cache/nginx/brotli-static.conf;</code> — only when <code>ngx_brotli</code> is compiled in (<code>nginx -V 2>&amp;1 | grep brotli</code>). Without it, nginx serves <code>.gz</code> and falls back to the plain file.</p></div>';
+        }
     }
 
     public static function render_settings_page(): void
