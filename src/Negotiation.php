@@ -47,4 +47,30 @@ class Negotiation
             default                               => null,
         };
     }
+
+    /**
+     * Map an Accept header value to a next-gen image extension.
+     *
+     * Mirrors the nginx `$sqrd_img_ext` resolution in nginx/sqrd-page-cache.conf
+     * exactly: AVIF wins over WebP when both are accepted, and null is returned
+     * when neither is present. Both sides MUST change in lockstep if the
+     * priority or supported formats ever change.
+     *
+     * Not invoked on the image request path today — upload images are served
+     * directly by nginx and never touch PHP. The method exists as a parity
+     * anchor so the nginx rule has a testable PHP mirror, and so a future
+     * PHP-side delivery layer (e.g. a <picture> fallback) can reuse it.
+     *
+     * @return 'avif'|'webp'|null
+     */
+    public static function image_ext_for_accept(string $accept): ?string
+    {
+        if (stripos($accept, 'image/avif') !== false) {
+            return 'avif';
+        }
+        if (stripos($accept, 'image/webp') !== false) {
+            return 'webp';
+        }
+        return null;
+    }
 }

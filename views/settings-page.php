@@ -198,4 +198,15 @@ $nginx_preview = str_replace(
     <pre style="background:#f6f7f7;padding:12px;"><code>location / {
     try_files $sqrd_cache_file $uri $uri/ /index.php?$args;
 }</code></pre>
+
+    <h3>Next-gen images (AVIF/WebP)</h3>
+    <p class="description">
+        The include above also negotiates AVIF/WebP variants of uploaded JPEG/PNG
+        images via the client's <code>Accept</code> header. Pair it with a conversion
+        plugin that generates the <code>.avif</code>/<code>.webp</code> siblings
+        (e.g. <strong>CompressX</strong>, or <strong>WebP Express</strong> +
+        <strong>AVIF Express</strong>) — enable generation but disable the plugin's
+        own delivery/rewrite so nginx does the serving. See the project README for
+        the full comparison and setup steps.
+    </p>
 </div>

@@ -165,7 +165,25 @@ response's `Content-Type`.  If your site returns `text/html` for an
 `Accept: text/markdown` request (no markdown renderer installed), the parity
 guard skips the write to avoid poisoning nginx's lookup.
 
+= Which image conversion plugin should I use for AVIF/WebP? =
+
+SQRD Page Cache only *serves* AVIF/WebP variants — it does not generate them.
+Pair it with a conversion plugin. For local, free, unlimited conversion of
+*both* formats, use **CompressX** (single plugin, both AVIF + WebP via PHP
+Imagick) or the combination of **WebP Express** (WebP) + **AVIF Express**
+(AVIF). See the "Next-gen image serving" section in the project README for a
+full comparison and setup steps.
+
+Important: enable generation in the conversion plugin but **disable its own
+delivery/rewrite feature** — the nginx include shipped with this plugin handles
+serving based on the `Accept` header. Do not paste the conversion plugin's
+nginx rewrite snippet.
+
 == Changelog ==
+
+= 0.3.0 =
+* **Feature — next-gen image serving (AVIF/WebP).** The nginx include now negotiates AVIF/WebP variants of uploaded JPEG/PNG images based on the client's `Accept` header, serving the best supported format at static-file speed before PHP is invoked. Generation of the variants is delegated to a third-party conversion plugin; this plugin only serves them. The upload-image `location` walks every common sibling-file convention via `try_files` (appended same-dir, replaced same-dir, and Converter for Media's separate `uploads-webpc/` directory), so it works with CompressX, WebP Express + AVIF Express (in combination), Imagify, ShortPixel, EWWW, and Converter for Media without custom rewrite rules. AVIF is preferred over WebP when both are accepted; legacy browsers get the original. `Vary: Accept` and a one-year immutable `Cache-Control` are set on every image response.
+* **Feature — PHP parity anchor.** `sqrd\Cache\Negotiation::image_ext_for_accept()` mirrors the nginx `$sqrd_img_ext` resolution (avif → webp → null). Not invoked on the image request path today (images bypass PHP) — it exists as a testable parity mirror and for future PHP-side delivery layers.
 
 = 0.2.0 =
 * **Feature — WooCommerce-aware cache invalidation.** New `sqrd\Cache\WooCommerce` integration auto-activates when WooCommerce is loaded. Purges product, shop, and category pages on `woocommerce_update_product` / `woocommerce_new_product` / `woocommerce_delete_product` / `woocommerce_trash_product` (covering direct CLI/API updates that bypass `save_post`), on stock changes (`woocommerce_product_set_stock`, `woocommerce_variation_set_stock`, plus the `_stock_status` variants), and per line item on `woocommerce_reduce_order_stock` when a checkout completes. Full-cache flush on `woocommerce_settings_saved` (currency, tax, and display rules affect every cached page).
@@ -222,6 +240,9 @@ guard skips the write to avoid poisoning nginx's lookup.
 * Initial release.
 
 == Upgrade Notice ==
+
+= 0.3.0 =
+Next-gen image serving: pull the updated `nginx/sqrd-page-cache.conf` and run `nginx -t && systemctl reload nginx`. The include now negotiates AVIF/WebP variants of uploaded JPEG/PNG images via the client's `Accept` header. Pair it with a conversion plugin (CompressX, or WebP Express + AVIF Express) — enable generation in that plugin but disable its own delivery/rewrite so the nginx include does the serving. No PHP settings change required.
 
 = 0.2.0 =
 WooCommerce sites: the plugin now auto-purges product / shop / category pages on product, stock, and order-stock events, full-flushes on settings save, and auto-excludes the cart / checkout / my-account pages by permalink (covers renamed or localised pages). The nginx include's cookie bypass regex has been extended to mirror the PHP-side list — pull the new file and `nginx -t && systemctl reload nginx` so carted shoppers stop being served the anonymous cached page from disk. No setting changes required.

@@ -27,6 +27,7 @@ A headers sidecar (`index.html.headers` / `index.md.headers`) stores the origina
 - Admin settings page with live nginx config preview and one-click purge
 - Admin bar "Purge Cache" shortcut for logged-in admins
 - All nginx config scoped to the vhost — zero `http { }` pollution
+- Accept-aware next-gen image serving — AVIF/WebP variants of uploaded JPEG/PNG images served by nginx based on the client's `Accept` header (generation delegated to a conversion plugin)
 
 ## Requirements
 
@@ -78,6 +79,80 @@ SQRD Page Cache applies the same rule in both PHP and nginx:
 > If `Accept` contains `text/markdown` (case-insensitive) → md variant. Otherwise → html.
 
 Your markdown-rendering code must use the same rule. If you ever need RFC 7231 q-value parsing, update `sqrd\Cache\Negotiation::ext_for_accept()` and the `if ($http_accept ~* "text/markdown")` block in the nginx include **in lockstep**.
+
+## Next-gen image serving (AVIF/WebP)
+
+The nginx include negotiates **AVIF/WebP** variants of uploaded JPEG/PNG images based on the client's `Accept` header — nginx serves the best supported variant at static-file speed before PHP is ever involved. **The plugin only serves; it does not generate variants.** Pair it with a third-party conversion plugin that writes the `.avif`/`.webp` siblings next to (or alongside) your originals.
+
+### Supported conversion plugins
+
+The upload-image location in `nginx/sqrd-page-cache.conf` walks every common sibling-file convention with `try_files`, so any of the following work without custom rewrite rules:
+
+| Plugin(s) | AVIF | WebP | Local? | Free & unlimited? | Sibling convention |
+|-----------|:----:|:----:|:------:|:-----------------:|--------------------|
+| **CompressX** (recommended, solo) | yes | yes | yes (Imagick) | yes | Appended, same dir |
+| **WebP Express + AVIF Express** (combo) | yes | yes | yes (Imagick/GD) | yes | Appended, same dir |
+| Converter for Media | PRO | yes | yes | WebP free, AVIF paid | Separate dir |
+| Imagify | yes | yes | no (cloud) | no (20 MB/mo) | Appended, same dir |
+| ShortPixel | yes | yes | no (cloud) | no (~50 credits/mo) | Appended, same dir |
+| EWWW Image Optimizer | Premium | yes | yes (needs `exec()`+binaries) | WebP free, AVIF paid | Appended, same dir |
+| WebP Express (solo) | no | yes | yes | yes | Appended, same dir |
+| LiteSpeed Cache | yes | yes | server-managed | yes | **conflicts** — it's a page-cache plugin |
+
+**Recommended for local / free / unlimited / both formats:**
+
+- **CompressX** — one plugin, both AVIF + WebP, 100 % local via PHP Imagick, no quotas, no cloud. Best single-plugin option.
+- **WebP Express + AVIF Express** — combine the mature, local-only WebP generator with a local AVIF generator. Each plugin owns one format. Both are free and unlimited.
+
+> **Avoid LiteSpeed Cache** on nginx — it duplicates full-page caching and conflicts with SQRD Page Cache.
+
+### Pros & cons
+
+**CompressX**
+
+- ✅ Both AVIF + WebP in one free, local, unlimited plugin
+- ✅ Uses PHP Imagick (no `exec()` / server binaries needed)
+- ⚠️ Newer project (v0.9.x) than the decade-old incumbents
+
+**WebP Express + AVIF Express (combo)**
+
+- ✅ Both formats, fully local, free, unlimited
+- ✅ WebP Express is mature and battle-tested
+- ⚠️ Two plugins to configure and keep in sync
+- ⚠️ AVIF Express needs Imagick ≥ 7.0.25 *or* GD compiled with libavif; verify your host
+- ⚠️ Verify the two plugins don't trip each other's "multiple optimizer detected" guard (they target different output extensions, so this is unlikely)
+
+**Converter for Media** (alternative)
+
+- ✅ WebP fully free & local; clean uninstall (separate dir, self-removing)
+- ⚠️ AVIF is PRO-only (paid)
+
+**WebP Express (solo)**
+
+- ✅ Mature, local, free, unlimited WebP
+- ❌ No AVIF support at all
+
+### Setup
+
+1. Install **and activate** a conversion plugin from the table above (CompressX, or WebP Express + AVIF Express).
+2. **Enable generation** of AVIF and/or WebP in the plugin's settings.
+3. **Disable the plugin's own delivery / rewrite / HTML-alteration feature** — SQRD Page Cache's nginx include does the serving. Do *not* paste the conversion plugin's nginx/`.htaccess` rewrite snippet; our include replaces it.
+4. If using **WebP Express**, set its storage mode to **"Mingled"** (converted `.webp` files next to originals) so the appended-convention `try_files` candidate finds them.
+5. Run the plugin's bulk conversion to generate variants for existing images.
+6. Pull the updated `nginx/sqrd-page-cache.conf` and reload: `nginx -t && systemctl reload nginx`.
+
+> **Host requirement for AVIF generation:** an AVIF-capable Imagick build (compiled with libheif/libaom) **or** GD compiled with libavif. Your conversion plugin will report whether AVIF generation is available.
+
+### How nginx picks the variant
+
+For a request to `/wp-content/uploads/2024/01/cat.jpg`, nginx resolves `$sqrd_img_ext` from the `Accept` header (AVIF preferred over WebP, empty if neither) then `try_files`:
+
+1. `cat.jpg.avif` (or `.webp`) — appended, same directory
+2. `cat.avif` — replaced extension, same directory
+3. `wp-content/uploads-webpc/.../cat.jpg.avif` — Converter for Media's separate directory
+4. `cat.jpg` — original fallback (always served when no variant exists or the browser supports neither)
+
+Every response carries `Vary: Accept` so CDNs and browsers cache the correct per-client variant, plus a one-year immutable `Cache-Control`.
 
 ## Excluding paths
 

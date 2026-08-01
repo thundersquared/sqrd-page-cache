@@ -90,3 +90,51 @@ describe('Negotiation::ext_for_response_content_type', function (): void {
         expect(Negotiation::ext_for_response_content_type('TEXT/MARKDOWN'))->toBe('md');
     });
 });
+
+// ── image_ext_for_accept ──────────────────────────────────────────────────────
+
+describe('Negotiation::image_ext_for_accept', function (): void {
+    it('returns avif when the client accepts image/avif', function (): void {
+        expect(Negotiation::image_ext_for_accept('image/avif'))->toBe('avif');
+    });
+
+    it('returns webp when the client accepts image/webp only', function (): void {
+        expect(Negotiation::image_ext_for_accept('image/webp'))->toBe('webp');
+    });
+
+    it('prefers avif over webp when both are accepted', function (): void {
+        expect(Negotiation::image_ext_for_accept('image/avif, image/webp'))->toBe('avif');
+        expect(Negotiation::image_ext_for_accept('image/webp, image/avif'))->toBe('avif');
+    });
+
+    it('is case-insensitive', function (): void {
+        expect(Negotiation::image_ext_for_accept('IMAGE/AVIF'))->toBe('avif');
+        expect(Negotiation::image_ext_for_accept('Image/WebP'))->toBe('webp');
+    });
+
+    it('detects avif inside a full browser Accept string', function (): void {
+        $chrome = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8';
+        expect(Negotiation::image_ext_for_accept($chrome))->toBe('avif');
+    });
+
+    it('detects webp when avif is absent from a browser Accept', function (): void {
+        $firefox = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8';
+        expect(Negotiation::image_ext_for_accept($firefox))->toBe('webp');
+    });
+
+    it('returns null when neither next-gen format is accepted', function (): void {
+        expect(Negotiation::image_ext_for_accept('text/html,application/xhtml+xml'))->toBeNull();
+    });
+
+    it('returns null for an empty Accept header', function (): void {
+        expect(Negotiation::image_ext_for_accept(''))->toBeNull();
+    });
+
+    it('mirrors the nginx $sqrd_img_ext rule: webp set first, avif overwrites', function (): void {
+        // nginx sets .webp then overwrites with .avif — avif wins when both present.
+        // PHP checks avif first then webp — same outcome, fewer comparisons.
+        expect(Negotiation::image_ext_for_accept('image/webp, image/avif'))->toBe('avif');
+        expect(Negotiation::image_ext_for_accept('image/webp'))->toBe('webp');
+        expect(Negotiation::image_ext_for_accept(''))->toBeNull();
+    });
+});
