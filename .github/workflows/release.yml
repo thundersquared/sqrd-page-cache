@@ -67,7 +67,7 @@ jobs:
           echo "Built: $(du -sh ${{ steps.tag.outputs.zip_name }})"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3.0.0
+        uses: softprops/action-gh-release@v3.0.3
         with:
           name: "${{ github.ref_name }}"
           generate_release_notes: true
