@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "akankov/html-min",
-            "version": "v2.5.1",
+            "version": "v2.11.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/akankov/html-min.git",
-                "reference": "07a3a9eccab73f5d4da672951732133c68239446"
+                "reference": "11eaa6ab4ef24be5f21f75f4d0efbff3630bc508"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/akankov/html-min/zipball/07a3a9eccab73f5d4da672951732133c68239446",
-                "reference": "07a3a9eccab73f5d4da672951732133c68239446",
+                "url": "https://api.github.com/repos/akankov/html-min/zipball/11eaa6ab4ef24be5f21f75f4d0efbff3630bc508",
+                "reference": "11eaa6ab4ef24be5f21f75f4d0efbff3630bc508",
                 "shasum": ""
             },
             "require": {
@@ -32,11 +32,15 @@
             },
             "require-dev": {
                 "friendsofphp/php-cs-fixer": "^3.65",
+                "infection/infection": "^0.33",
                 "nyholm/psr7": "^1.8",
                 "phan/phan": "^6.0",
                 "phpstan/phpstan": "^2.1",
                 "phpunit/phpunit": "^12.0",
                 "rector/rector": "^2.0"
+            },
+            "suggest": {
+                "matthiasmullie/minify": "Aggressive inline CSS/JS minification. Wire via HtmlMin::setInlineCssMinifier() / setInlineJsMinifier()."
             },
             "bin": [
                 "bin/html-min"
@@ -69,7 +73,7 @@
             ],
             "support": {
                 "issues": "https://github.com/akankov/html-min/issues",
-                "source": "https://github.com/akankov/html-min/tree/v2.5.1"
+                "source": "https://github.com/akankov/html-min/tree/v2.11.0"
             },
             "funding": [
                 {
@@ -77,7 +81,7 @@
                     "type": "ko_fi"
                 }
             ],
-            "time": "2026-05-13T07:10:11+00:00"
+            "time": "2026-06-19T17:44:04+00:00"
         },
         {
             "name": "psr/http-factory",
